@@ -150,6 +150,15 @@ docker compose restart dashboard
 
 Depois rode os testes 3 e 9 novamente.
 
+No Fedora, se o diagnóstico mostrar que `cliente-wan` pinga `10.10.10.1`, mas
+não pinga `1.1.1.1`, corrija a NAT do host:
+
+```bash
+sudo bash infra/fix-libvirt-nat.sh
+bash infra/provision-clients.sh
+docker compose restart dashboard
+```
+
 ## Docker build travando em apt-get update
 
 Sintoma:

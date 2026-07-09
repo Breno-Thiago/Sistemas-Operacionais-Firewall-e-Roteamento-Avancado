@@ -112,6 +112,12 @@ bash infra/run-dashboard-native.sh
 Problemas comuns de Docker, grupos, Cockpit e imagens estão em
 [docs/solucao-problemas.md](docs/solucao-problemas.md).
 
+Se no Fedora os testes 3 e 9 falharem juntos, rode:
+
+```bash
+sudo bash infra/fix-libvirt-nat.sh
+```
+
 ## Roteiro de Demonstração
 
 1. Abrir o dashboard.
