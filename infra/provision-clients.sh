@@ -15,13 +15,12 @@ set -euo pipefail
 export LC_ALL=C
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="$(cd "$DIR/.." && pwd)"
-CON="python3 $DIR/vm-console.py"
 KEY="$("$DIR/ensure-local-ssh-key.sh")"
 PUB_KEY="$(cat "$KEY.pub")"
 
 run_console() {
   local vm="$1" marker="$2" command="$3" output
-  output="$(timeout 60 $CON "$command" "$vm" 12 2>&1 | tr -d '\r')"
+  output="$(timeout 60 python3 "$DIR/vm-console.py" "$command" "$vm" 12 2>&1 | tr -d '\r')"
   printf '%s\n' "$output" | grep -E "$marker|enp1s0|[0-9]{6,}" || true
   if ! printf '%s\n' "$output" | grep -q "$marker"; then
     echo "!! Provisionamento falhou em $vm: marcador $marker nao apareceu." >&2

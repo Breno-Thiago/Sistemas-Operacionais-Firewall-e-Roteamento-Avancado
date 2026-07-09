@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: app/Dockerfile
+      network: host
     network_mode: host
     environment:
       LAB_MODE: ${LAB_MODE:-local}
