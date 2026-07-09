@@ -159,6 +159,10 @@ bash infra/provision-clients.sh
 docker compose restart dashboard
 ```
 
+O script detecta a interface real de saída do host, habilita `ip_forward`,
+ajusta `firewalld` e cria uma regra explícita em `nftables` para mascarar a rede
+`10.10.10.0/24` da WAN do laboratório.
+
 ## Docker build travando em apt-get update
 
 Sintoma:

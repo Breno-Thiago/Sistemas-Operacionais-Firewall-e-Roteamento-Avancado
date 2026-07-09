@@ -99,7 +99,7 @@ e não precisa ser enviada junto com o pacote do Drive.
 
 ```bash
 bash infra/check-host.sh
-bash infra/setup-all.sh
+bash infra/setup.sh
 ```
 
 Esse comando faz:

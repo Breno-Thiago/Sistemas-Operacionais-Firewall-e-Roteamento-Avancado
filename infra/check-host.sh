@@ -6,6 +6,8 @@ export LC_ALL=C
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=infra/lib/common.sh
+source "$ROOT/infra/lib/common.sh"
 
 fail=0
 
@@ -26,10 +28,8 @@ for cmd in virsh qemu-img virt-install docker ssh ssh-keygen curl ip python3; do
   need_cmd "$cmd"
 done
 
-if docker compose version >/dev/null 2>&1; then
-  ok "docker compose ($(docker compose version --short 2>/dev/null || echo instalado))"
-elif command -v docker-compose >/dev/null 2>&1; then
-  ok "docker-compose ($(docker-compose --version))"
+if compose_cmd="$(docker_compose_cmd)"; then
+  ok "$compose_cmd ($($compose_cmd version --short 2>/dev/null || $compose_cmd --version 2>/dev/null || echo instalado))"
 else
   bad "docker compose ou docker-compose"
 fi
@@ -97,19 +97,9 @@ fi
 
 echo
 echo "== imagens em local/vm-images =="
-for file in \
-  opnsense-fw-installed.qcow2 \
-  cliente-lan.qcow2 \
-  cliente-wan.qcow2 \
-  noble-server-cloudimg-amd64.img \
-  cliente-lan.iso \
-  cliente-wan.iso; do
-  if [ -f "local/vm-images/$file" ]; then
-    ok "$file"
-  else
-    bad "local/vm-images/$file"
-  fi
-done
+if ! check_vm_images "$ROOT/local/vm-images"; then
+  fail=1
+fi
 
 echo
 if [ "$fail" -eq 0 ]; then

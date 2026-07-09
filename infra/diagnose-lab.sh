@@ -35,11 +35,26 @@ ssh_vm() {
 section "Host libvirt"
 run virsh -c qemu:///system list --all
 run virsh -c qemu:///system net-list --all
+run virsh -c qemu:///system net-dhcp-leases wan-lab
+run virsh -c qemu:///system net-dhcp-leases lan-lab
 run virsh -c qemu:///system net-dumpxml wan-lab
 run virsh -c qemu:///system net-dumpxml lan-lab
 run ip -br addr show virbr-wan
 run ip -br addr show virbr-lan
+run ip route get 1.1.1.1
 run sysctl net.ipv4.ip_forward
+if command -v firewall-cmd >/dev/null 2>&1; then
+  run firewall-cmd --state
+  run firewall-cmd --get-active-zones
+  run firewall-cmd --list-policies
+fi
+if command -v nft >/dev/null 2>&1; then
+  if [ "$(id -u)" -eq 0 ]; then
+    run nft list table inet opnsense_lab
+  else
+    echo "AVISO: execute com sudo para listar regras nftables: sudo bash infra/diagnose-lab.sh"
+  fi
+fi
 
 section "Alcance do host"
 run bash -c 'timeout 3 bash -c "echo > /dev/tcp/192.168.10.1/443" && echo "OPNsense LAN 443 OK"'

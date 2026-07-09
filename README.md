@@ -37,7 +37,8 @@ Redes:
 
 ## Instalação Rápida
 
-O caminho completo está em [INSTALACAO.md](INSTALACAO.md). Resumo:
+O caminho curto está em [COMO_RODAR.md](COMO_RODAR.md). O caminho completo está
+em [INSTALACAO.md](INSTALACAO.md). Resumo:
 
 ```bash
 sudo bash infra/install-prereqs.sh
@@ -56,7 +57,7 @@ Depois coloque as imagens em `local/vm-images/` e rode:
 
 ```bash
 bash infra/check-host.sh
-bash infra/setup-all.sh
+bash infra/setup.sh
 ```
 
 O setup gera a chave SSH local do laboratório em `local/ssh/lab_ed25519` e a

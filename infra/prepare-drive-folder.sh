@@ -5,19 +5,15 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=infra/lib/common.sh
+source "$ROOT/infra/lib/common.sh"
 SRC="$ROOT/local/vm-images"
 DST="$ROOT/local/drive-upload"
 
 rm -rf "$DST"
 mkdir -p "$DST/vm-images"
 
-for f in \
-  opnsense-fw-installed.qcow2 \
-  cliente-lan.qcow2 \
-  cliente-wan.qcow2 \
-  noble-server-cloudimg-amd64.img \
-  cliente-lan.iso \
-  cliente-wan.iso; do
+for f in "${LAB_IMAGE_FILES[@]}"; do
   if [ ! -f "$SRC/$f" ]; then
     echo "Falta $SRC/$f" >&2
     exit 1

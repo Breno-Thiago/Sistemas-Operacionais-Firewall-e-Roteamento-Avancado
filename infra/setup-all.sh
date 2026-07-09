@@ -8,17 +8,17 @@ set -euo pipefail
 export LC_ALL=C
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+# shellcheck source=infra/lib/common.sh
+source "$ROOT/infra/lib/common.sh"
 
 compose_up() {
   if docker ps >/dev/null 2>&1; then
-    if docker compose version >/dev/null 2>&1; then
-      docker compose up -d --build
+    if compose_cmd="$(docker_compose_cmd)"; then
+      $compose_cmd up -d --build
     else
-      docker-compose up -d --build || {
-        echo "docker-compose antigo falhou ao recriar o container; tentando subida limpa do dashboard..."
-        docker-compose rm -sf dashboard
-        docker-compose up -d --build
-      }
+      echo "Docker esta acessivel, mas Docker Compose nao foi encontrado." >&2
+      echo "Instale o plugin compose ou rode: bash infra/run-dashboard-native.sh" >&2
+      exit 1
     fi
     return
   fi
@@ -39,27 +39,22 @@ MSG
   exit 1
 }
 
-echo "== 0/5 diagnostico rapido do host =="
-if ! bash infra/check-host.sh; then
-  echo
-  echo "Corrija os itens acima e rode novamente: bash infra/setup-all.sh" >&2
-  exit 1
+if [ "${LAB_SKIP_HOST_CHECK:-0}" != "1" ]; then
+  echo "== 0/5 diagnostico rapido do host =="
+  if ! bash infra/check-host.sh; then
+    echo
+    echo "Corrija os itens acima e rode novamente: bash infra/setup-all.sh" >&2
+    exit 1
+  fi
+else
+  echo "== 0/5 diagnostico rapido do host ja executado =="
 fi
 
 echo "== 1/5 verificando arquivos em local/vm-images/ =="
-for file in \
-  opnsense-fw-installed.qcow2 \
-  cliente-lan.qcow2 \
-  cliente-wan.qcow2 \
-  noble-server-cloudimg-amd64.img \
-  cliente-lan.iso \
-  cliente-wan.iso; do
-  if [ ! -f "local/vm-images/$file" ]; then
-    echo "!! Falta local/vm-images/$file" >&2
-    echo "Baixe os arquivos do Drive e coloque todos em local/vm-images/." >&2
-    exit 1
-  fi
-done
+if ! check_vm_images "$ROOT/local/vm-images"; then
+  echo "Baixe os arquivos do Drive e coloque todos em local/vm-images/." >&2
+  exit 1
+fi
 
 echo "== 2/5 importando redes e VMs no KVM =="
 bash infra/import-local.sh
@@ -72,6 +67,25 @@ bash infra/provision-clients.sh
 
 echo "== 5/5 subindo o dashboard web =="
 compose_up
+
+echo "== pos-setup: teste rapido de conectividade WAN =="
+if ! ssh -i "$ROOT/local/ssh/lab_ed25519" \
+  -o BatchMode=yes \
+  -o StrictHostKeyChecking=accept-new \
+  -o UserKnownHostsFile=/tmp/opnsense-lab-known-hosts \
+  -o ConnectTimeout=8 \
+  lab@10.10.10.171 'ping -c 1 -W 2 1.1.1.1' >/dev/null 2>&1; then
+  cat <<MSG
+AVISO: cliente-wan ainda nao conseguiu sair para a internet.
+Se voce estiver no Fedora/firewalld, rode:
+
+  sudo bash infra/fix-libvirt-nat.sh
+  bash infra/provision-clients.sh
+  docker compose restart dashboard
+
+Depois rode os testes 3 e 9 novamente.
+MSG
+fi
 
 cat <<MSG
 

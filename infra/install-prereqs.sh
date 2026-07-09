@@ -7,16 +7,16 @@
 # Distros suportadas: Debian/Ubuntu/Mint (apt), Fedora (dnf), Arch/Manjaro
 # (pacman), openSUSE (zypper). Em outras, instale os equivalentes na mao.
 set -euo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+# shellcheck source=infra/lib/common.sh
+source "$ROOT/infra/lib/common.sh"
 
-if [ "$(id -u)" -ne 0 ]; then
-  echo "Rode com sudo: sudo bash infra/install-prereqs.sh" >&2; exit 1
-fi
+require_root "infra/install-prereqs.sh"
 REAL_USER="${SUDO_USER:-$USER}"
 
-pm=""
-for c in apt-get dnf pacman zypper; do command -v "$c" >/dev/null 2>&1 && { pm="$c"; break; }; done
+pm="$(detect_package_manager || true)"
 [ -z "$pm" ] && { echo "Gerenciador de pacotes nao reconhecido. Veja INSTALACAO.md (secao Outras distros)." >&2; exit 1; }
-echo "== distro detectada: $pm =="
+echo "== distro detectada: $(detect_os_id) / $pm =="
 
 case "$pm" in
   apt-get)
@@ -50,6 +50,10 @@ echo "== habilitando serviços =="
 systemctl enable --now libvirtd 2>/dev/null || systemctl enable --now libvirtd.service || true
 systemctl enable --now docker 2>/dev/null || true
 systemctl enable --now cockpit.socket 2>/dev/null || true
+
+if command -v firewall-cmd >/dev/null 2>&1; then
+  systemctl enable --now firewalld 2>/dev/null || true
+fi
 
 echo "== adicionando '$REAL_USER' aos grupos (libvirt, kvm, docker) =="
 for g in libvirt kvm docker; do getent group "$g" >/dev/null 2>&1 && usermod -aG "$g" "$REAL_USER" || true; done
