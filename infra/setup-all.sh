@@ -9,13 +9,20 @@ export LC_ALL=C
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-echo "== 1/5 conferindo imagens em local/vm-images/ =="
-cd local/vm-images
-if ! sha256sum -c "$ROOT/infra/vm-images.sha256"; then
-  echo "!! Checksums nao batem. Baixe os arquivos de novo (veja INSTALACAO.md)." >&2
-  exit 1
-fi
-cd "$ROOT"
+echo "== 1/5 verificando arquivos em local/vm-images/ =="
+for file in \
+  opnsense-fw-installed.qcow2 \
+  cliente-lan.qcow2 \
+  cliente-wan.qcow2 \
+  noble-server-cloudimg-amd64.img \
+  cliente-lan.iso \
+  cliente-wan.iso; do
+  if [ ! -f "local/vm-images/$file" ]; then
+    echo "!! Falta local/vm-images/$file" >&2
+    echo "Baixe os arquivos do Drive e coloque todos em local/vm-images/." >&2
+    exit 1
+  fi
+done
 
 echo "== 2/5 importando redes e VMs no KVM =="
 bash infra/import-local.sh

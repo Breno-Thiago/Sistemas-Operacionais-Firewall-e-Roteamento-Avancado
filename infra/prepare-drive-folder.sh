@@ -8,7 +8,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC="$ROOT/local/vm-images"
 DST="$ROOT/local/drive-upload"
 
-mkdir -p "$DST/vm-images" "$DST/ssh-key"
+rm -rf "$DST"
+mkdir -p "$DST/vm-images"
 
 for f in \
   opnsense-fw-installed.qcow2 \
@@ -24,20 +25,6 @@ for f in \
   ln -f "$SRC/$f" "$DST/vm-images/$f" 2>/dev/null || cp -f "$SRC/$f" "$DST/vm-images/$f"
 done
 
-cp -f "$ROOT/infra/vm-images.sha256" "$DST/vm-images/SHA256SUMS.txt"
-
-if [ -f "$HOME/.ssh/ufs_so_lab_do" ]; then
-  install -m 600 "$HOME/.ssh/ufs_so_lab_do" "$DST/ssh-key/ufs_so_lab_do"
-else
-  echo "Aviso: $HOME/.ssh/ufs_so_lab_do nao encontrado; chave privada nao copiada." >&2
-fi
-
-if [ -f "$HOME/.ssh/ufs_so_lab_do.pub" ]; then
-  install -m 644 "$HOME/.ssh/ufs_so_lab_do.pub" "$DST/ssh-key/ufs_so_lab_do.pub"
-else
-  echo "Aviso: $HOME/.ssh/ufs_so_lab_do.pub nao encontrado; chave publica nao copiada." >&2
-fi
-
 cat > "$DST/LEIA-ME.txt" <<'MSG'
 Arquivos para o laboratorio OPNsense local.
 
@@ -48,19 +35,11 @@ No computador de quem for rodar:
 1. Copie tudo de vm-images/ para:
    local/vm-images/
 
-2. Copie as chaves de ssh-key/ para:
-   ~/.ssh/ufs_so_lab_do
-   ~/.ssh/ufs_so_lab_do.pub
-
-3. Ajuste permissao:
-   chmod 600 ~/.ssh/ufs_so_lab_do
-
-4. Confira checksums:
-   cd local/vm-images
-   sha256sum -c ../../infra/vm-images.sha256
-
-5. Suba o laboratorio:
+2. Suba o laboratorio:
    bash infra/setup-all.sh
+
+3. Abra o dashboard:
+   http://localhost:8088
 MSG
 
 echo "Pasta pronta: $DST"

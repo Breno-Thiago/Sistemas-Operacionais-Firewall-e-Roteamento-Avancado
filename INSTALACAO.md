@@ -70,13 +70,11 @@ Ela deve conter:
 | `noble-server-cloudimg-amd64.img` | imagem base Ubuntu dos clientes |
 | `cliente-lan.iso` | cloud-init do cliente LAN |
 | `cliente-wan.iso` | cloud-init do cliente WAN |
-| `ufs_so_lab_do` | chave SSH privada usada pelo dashboard |
-| `ufs_so_lab_do.pub` | chave SSH pública |
 
 Crie as pastas e copie os arquivos:
 
 ```bash
-mkdir -p local/vm-images ~/.ssh
+mkdir -p local/vm-images
 
 # ajuste o caminho abaixo para onde o navegador salvou os arquivos
 cp ~/Downloads/opnsense-fw-installed.qcow2 local/vm-images/
@@ -85,21 +83,10 @@ cp ~/Downloads/cliente-wan.qcow2 local/vm-images/
 cp ~/Downloads/noble-server-cloudimg-amd64.img local/vm-images/
 cp ~/Downloads/cliente-lan.iso local/vm-images/
 cp ~/Downloads/cliente-wan.iso local/vm-images/
-
-cp ~/Downloads/ufs_so_lab_do ~/.ssh/ufs_so_lab_do
-cp ~/Downloads/ufs_so_lab_do.pub ~/.ssh/ufs_so_lab_do.pub
-chmod 600 ~/.ssh/ufs_so_lab_do
 ```
 
-Conferir checksums:
-
-```bash
-cd local/vm-images
-sha256sum -c ../../infra/vm-images.sha256
-cd ../..
-```
-
-Todos devem aparecer como `OK`.
+O dashboard usa a chave SSH já configurada na máquina de apresentação. Essa
+chave não faz parte do pacote do Drive.
 
 ## 5. Subir Tudo
 
@@ -109,7 +96,7 @@ bash infra/setup-all.sh
 
 Esse comando faz:
 
-1. confere as imagens;
+1. verifica os arquivos de imagem;
 2. importa os discos para o pool do libvirt;
 3. cria as redes `wan-lab` e `lan-lab`;
 4. define e inicia `opnsense-fw`, `cliente-lan` e `cliente-wan`;

@@ -15,8 +15,6 @@ web para executar as validações da apresentação.
 - `assets/`: imagens finais usadas nos slides e no README.
 - `presentation/`: lugar reservado para o slide final exportado.
 
-Arquivos grandes de VM, chaves SSH e rascunhos ficam fora do Git.
-
 ## Topologia
 
 O laboratório usa três VMs:
@@ -54,7 +52,7 @@ https://drive.google.com/drive/u/0/folders/1Nov2k5MaHthKGU58kkjkTqK25pcs-Agj
 
 Lista completa dos arquivos em [docs/arquivos-drive.md](docs/arquivos-drive.md).
 
-Depois coloque as imagens em `local/vm-images/`, a chave em `~/.ssh/`, e rode:
+Depois coloque as imagens em `local/vm-images/` e rode:
 
 ```bash
 bash infra/setup-all.sh
@@ -120,15 +118,3 @@ bash infra/run-dashboard-native.sh
 9. Parar o HTTP temporário.
 
 Detalhes em [docs/roteiro-validacao.md](docs/roteiro-validacao.md).
-
-## O Que Não Vai Para o GitHub
-
-Não versionar:
-
-- `*.qcow2`, `*.img`, `*.iso`
-- `.env`
-- chaves SSH
-- caches, rascunhos, LaTeX build e Playwright
-- pasta `local/`
-
-Esses itens são ignorados pelo `.gitignore`.
