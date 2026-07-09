@@ -50,10 +50,9 @@ Abra:
 http://localhost:8088
 ```
 
-## Se LAN/Internet e WireGuard falharem juntos
+## Se NAT e WireGuard falharem juntos
 
-Se o card `LAN, DNS, NAT e HTTPS` falhar no ping para `1.1.1.1` e o card
-`VPN acessa a LAN` falhar no WireGuard:
+Se o card `Rota padrão e NAT` falhar e o card `VPN acessa a LAN` também falhar:
 
 ```bash
 bash infra/diagnose-lab.sh

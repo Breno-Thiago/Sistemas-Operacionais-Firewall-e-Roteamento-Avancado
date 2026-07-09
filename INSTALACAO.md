@@ -156,7 +156,7 @@ No dashboard, clique em `Rodar tudo`.
 Resultado esperado:
 
 - as três VMs respondem;
-- LAN, DNS, NAT e HTTPS para `www.google.com` validados;
+- endereço, gateway, DNS da LAN e NAT por rota padrão validados;
 - acesso WAN direto para LAN e porta WAN `80` bloqueados;
 - servidor HTTP temporário sobe no cliente LAN;
 - DNAT `8080` retorna HTTP `200`;

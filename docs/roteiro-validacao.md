@@ -6,8 +6,9 @@ Use este roteiro junto do dashboard em:
 http://localhost:8088
 ```
 
-O dashboard foi organizado em sete validações. Cada card executa comandos
-controlados por SSH nas VMs e mostra a evidência esperada na saída.
+O dashboard usa cards menores para que cada etapa tenha entrada e saída curtas.
+Cada validação executa comandos controlados por SSH nas VMs e mostra marcadores
+objetivos na saída.
 
 ## 1. Status do Laboratório
 
@@ -21,27 +22,50 @@ Resultado esperado:
 - `cliente-lan (192.168.10.100): UP`
 - `cliente-wan (10.10.10.171): UP`
 
-## 2. LAN, DNS, NAT e HTTPS
+## 2. Endereço e Gateway
 
 Objetivo:
 
 - Confirmar IP do cliente LAN.
 - Confirmar gateway padrão `192.168.10.1`.
-- Confirmar DNS apontando para o OPNsense.
-- Resolver `www.google.com`.
-- Validar ping externo para `1.1.1.1`.
-- Validar HTTPS externo para `https://www.google.com`.
 
 Resultado esperado:
 
-- `192.168.10.100`
-- `default via 192.168.10.1`
-- `DNS_GOOGLE_OK`
-- `LAN_GATEWAY_OK`
-- `INTERNET_IP_OK`
-- `HTTPS_GOOGLE=200 EXIT=0`
+- `LAN_IP=192.168.10.100/24`
+- `DEFAULT_VIA=192.168.10.1`
 
-## 3. Bloqueios WAN
+## 3. DHCP/DNS da LAN
+
+Objetivo:
+
+- Mostrar o modo de endereçamento do cliente da demonstração.
+- Confirmar DNS apontando para o OPNsense.
+- Validar resolução de nome sem acessar página web.
+
+Observação:
+
+- O cliente LAN fica fixo em `192.168.10.100` para o DNAT sempre apontar para o
+  mesmo host.
+
+Resultado esperado:
+
+- `DNS_SERVER=192.168.10.1`
+- `DNS_RESOLVE_OK`
+
+## 4. Rota Padrão e NAT
+
+Objetivo:
+
+- Confirmar que a rota para fora usa o gateway `192.168.10.1`.
+- Validar NAT por ping externo para `1.1.1.1`.
+- Não depender de site externo, HTTPS, HTML ou anti-bot.
+
+Resultado esperado:
+
+- `via 192.168.10.1`
+- `NAT_ROUTE_OK`
+
+## 5. Bloqueios WAN
 
 Objetivo:
 
@@ -50,11 +74,11 @@ Objetivo:
 
 Resultado esperado:
 
-- Ping direto para `192.168.10.100` com `100% packet loss`.
-- HTTP direto para `192.168.10.100:8080` com `DIRECT_HTTP=000 EXIT=28`.
-- Porta WAN `80` com `WAN_80=000 EXIT=28`.
+- `WAN_LAN_PING_BLOCKED`
+- `DIRECT_HTTP=000 EXIT=28`
+- `WAN_80=000 EXIT=28`
 
-## 4. Subir Servidor Web
+## 6. Subir Servidor Web
 
 Objetivo:
 
@@ -65,7 +89,7 @@ Resultado esperado:
 
 - `LISTEN 8080 OK`
 
-## 5. Validar Publicação 8080
+## 7. Validar Publicação 8080
 
 Objetivo:
 
@@ -76,7 +100,7 @@ Resultado esperado:
 
 - `DNAT_8080=200 EXIT=0`
 
-## 6. Parar Servidor Web
+## 8. Parar Servidor Web
 
 Objetivo:
 
@@ -86,7 +110,7 @@ Resultado esperado:
 
 - `HTTP 8080 parado` ou `sem pidfile`.
 
-## 7. WireGuard
+## 9. WireGuard
 
 Objetivo:
 
@@ -95,5 +119,7 @@ Objetivo:
 
 Resultado esperado:
 
-- `wg show` com `latest handshake`.
-- Ping para `10.99.0.1`, `192.168.10.1` e `192.168.10.100` com `0% packet loss`.
+- `WG_HANDSHAKE_AGE=...`
+- `WG_TUNNEL_OK`
+- `WG_LAN_GATEWAY_OK`
+- `WG_CLIENT_LAN_OK`
