@@ -124,6 +124,12 @@ O guia curto está em [COMO_RODAR.md](COMO_RODAR.md). O guia completo está em
 O dashboard executa nove validações fixas, sem terminal livre, para reduzir erro
 durante a apresentação.
 
+Cada card mostra a entrada e a saída como um transcript de terminal: antes de
+cada etapa aparece o prompt da máquina executada, por exemplo
+`lab@cliente-lan:~$ ip route get 1.1.1.1`, seguido da evidência retornada. A
+tela colore comandos, marcadores de sucesso, falhas e dicas para facilitar a
+leitura durante a apresentação.
+
 Ele valida:
 
 - status das três VMs;

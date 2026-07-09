@@ -200,6 +200,14 @@ pre.cmd::before { content: "❯ "; color: var(--accent); font-weight: 700; }
 pre.output { margin: 0; min-height: 100%; background: var(--term-bg); color: var(--term-ink); font-family: var(--mono); font-size: 15.5px; line-height: 1.55;
   padding: 14px 16px; border-radius: 10px; border: 1px solid color-mix(in srgb, #fff 6%, var(--term-bg));
   white-space: pre-wrap; word-break: break-word; }
+pre.output span { display: inline; }
+.term-cmd { color: var(--cyan); font-weight: 800; }
+.term-cmd::before { content: "❯ "; color: var(--accent-2); font-weight: 900; }
+.term-ok { color: var(--green); font-weight: 750; }
+.term-info { color: #8fd6ff; }
+.term-err, .term-fail, .term-exit-fail { color: var(--red); font-weight: 750; }
+.term-hint { color: var(--amber); font-weight: 750; }
+.term-exit-ok { color: var(--green); font-weight: 750; }
 
 .step-list { margin: 0; padding: 0; list-style: none; display: grid; gap: 7px; }
 .step { display: grid; grid-template-columns: minmax(0,auto) minmax(0,1fr); align-items: center; gap: 11px; padding: 4px 0; }

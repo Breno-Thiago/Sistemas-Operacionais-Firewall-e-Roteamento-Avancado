@@ -10,6 +10,11 @@ O dashboard usa cards menores para que cada etapa tenha entrada e saída curtas.
 Cada validação executa comandos controlados por SSH nas VMs e mostra marcadores
 objetivos na saída.
 
+A saída aparece em formato de terminal. Linhas como
+`lab@cliente-lan:~$ ip route get 1.1.1.1` indicam exatamente qual comando foi
+executado em qual máquina; os marcadores `*_OK`, bloqueios e erros recebem cores
+diferentes para facilitar a leitura.
+
 ## 1. Status do Laboratório
 
 Objetivo:

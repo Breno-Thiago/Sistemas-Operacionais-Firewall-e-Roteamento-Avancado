@@ -89,6 +89,8 @@ def _ssh_base(s: Settings, use_lab_key: bool = True) -> list[str]:
         "UserKnownHostsFile=/tmp/opnsense-lab-known-hosts",
         "-o",
         "ConnectTimeout=8",
+        "-o",
+        "LogLevel=ERROR",
     ]
     if use_lab_key and s.ssh_key_path:
         cmd.extend(["-i", s.ssh_key_path])
@@ -123,6 +125,17 @@ def wan(s: Settings, command: str) -> list[str]:
     return client_ssh(s, s.wan_client, command)
 
 
+def terminal_script(steps: tuple[tuple[str, str], ...]) -> str:
+    parts = ["set -e"]
+    for label, command in steps:
+        parts.append(
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' "
+            f"\"$USER\" \"$(hostname)\" {shlex.quote(label)}"
+        )
+        parts.append(command)
+    return "; ".join(parts)
+
+
 def overview_command(s: Settings) -> list[str]:
     # Roda no proprio host do laboratorio (o dashboard usa network_mode host).
     # Testa conexao TCP em cada VM (443 no OPNsense, 22 nos clientes) e diz
@@ -136,6 +149,7 @@ def overview_command(s: Settings) -> list[str]:
     lista = " ".join(f'"{name} {ip} {port}"' for name, ip, port in targets)
     script = (
         f"for e in {lista}; do set -- $e; "
+        'printf "\\n@@CMD dashboard@host-kvm:~$ testa %s %s:%s\\n" "$1" "$2" "$3"; '
         'if timeout 3 bash -c "echo > /dev/tcp/$2/$3" 2>/dev/null; '
         'then echo "$1 ($2): UP"; else echo "$1 ($2): DOWN"; fi; done'
     )
@@ -179,11 +193,20 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "set -e; "
-            "ip4=$(ip -4 -br addr show enp1s0 | awk '{print $3}'); "
-            "gw=$(ip route show default | awk '{print $3; exit}'); "
-            "echo LAN_IP=$ip4; echo DEFAULT_VIA=$gw; "
-            "[ \"$ip4\" = '192.168.10.100/24' ]; [ \"$gw\" = '192.168.10.1' ]",
+            terminal_script(
+                (
+                    (
+                        "ip -4 -br addr show enp1s0",
+                        "ip4=$(ip -4 -br addr show enp1s0 | awk '{print $3}'); "
+                        "echo LAN_IP=$ip4; [ \"$ip4\" = '192.168.10.100/24' ]",
+                    ),
+                    (
+                        "ip route show default",
+                        "gw=$(ip route show default | awk '{print $3; exit}'); "
+                        "echo DEFAULT_VIA=$gw; [ \"$gw\" = '192.168.10.1' ]",
+                    ),
+                )
+            ),
         ),
         expected=("LAN_IP=192.168.10.100/24", "DEFAULT_VIA=192.168.10.1"),
         accent="blue",
@@ -206,13 +229,25 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "set -e; "
-            "mode=static-for-dnat; "
-            "grep -qrh 'dhcp4:[[:space:]]*true' /etc/netplan 2>/dev/null && mode=dhcp || true; "
-            "dns=$(resolvectl dns enp1s0 | awk -F': ' '{print $2}'); "
-            "echo CLIENT_ADDRESS_MODE=$mode; echo DNS_SERVER=$dns; "
-            "resolvectl query one.one.one.one >/dev/null; echo DNS_RESOLVE_OK; "
-            "[ \"$dns\" = '192.168.10.1' ]",
+            terminal_script(
+                (
+                    (
+                        "grep dhcp4 /etc/netplan",
+                        "mode=static-for-dnat; "
+                        "grep -qrh 'dhcp4:[[:space:]]*true' /etc/netplan 2>/dev/null && mode=dhcp || true; "
+                        "echo CLIENT_ADDRESS_MODE=$mode",
+                    ),
+                    (
+                        "resolvectl dns enp1s0",
+                        "dns=$(resolvectl dns enp1s0 | awk -F': ' '{print $2}'); "
+                        "echo DNS_SERVER=$dns; [ \"$dns\" = '192.168.10.1' ]",
+                    ),
+                    (
+                        "resolvectl query one.one.one.one",
+                        "resolvectl query one.one.one.one >/dev/null; echo DNS_RESOLVE_OK",
+                    ),
+                )
+            ),
         ),
         expected=("DNS_SERVER=192.168.10.1", "DNS_RESOLVE_OK"),
         accent="cyan",
@@ -237,11 +272,19 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "set -e; "
-            "ip route get 1.1.1.1 | head -1 | sed 's/^/ROUTE_TO_1_1_1_1=/'; "
-            "ping -c 2 -W 2 1.1.1.1 >/tmp/nat-ping.out; "
-            "grep -q '0% packet loss' /tmp/nat-ping.out; "
-            "echo NAT_ROUTE_OK",
+            terminal_script(
+                (
+                    (
+                        "ip route get 1.1.1.1",
+                        "ip route get 1.1.1.1 | head -1 | sed 's/^/ROUTE_TO_1_1_1_1=/'",
+                    ),
+                    (
+                        "ping -c 2 1.1.1.1",
+                        "ping -c 2 -W 2 1.1.1.1 >/tmp/nat-ping.out; "
+                        "grep -q '0% packet loss' /tmp/nat-ping.out; echo NAT_ROUTE_OK",
+                    ),
+                )
+            ),
         ),
         expected=("via 192.168.10.1", "NAT_ROUTE_OK"),
         timeout=20,
@@ -266,13 +309,17 @@ CHECKS: tuple[Check, ...] = (
         build=lambda s: wan(
             s,
             "set -e; "
+            "trap 'sudo ip route del 192.168.10.0/24 2>/dev/null || true; "
+            "sudo ip route replace 192.168.10.0/24 dev wg0 2>/dev/null || true' EXIT; "
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'sudo ip route replace 192.168.10.0/24 via 10.10.10.146'; "
             "sudo ip route replace 192.168.10.0/24 via 10.10.10.146; "
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'ping -c 2 192.168.10.100'; "
             "ping -c 2 -W 2 192.168.10.100 >/tmp/wan-lan-ping.out 2>&1 || true; "
             "grep -q '100% packet loss' /tmp/wan-lan-ping.out && echo WAN_LAN_PING_BLOCKED; "
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl http://192.168.10.100:8080/'; "
             "curl -sS --max-time 5 -o /dev/null -w 'DIRECT_HTTP=%{http_code} EXIT=%{exitcode}\\n' http://192.168.10.100:8080/ 2>/dev/null || true; "
-            f"curl -sS --max-time 5 -o /dev/null -w 'WAN_80=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:80/ 2>/dev/null || true; "
-            "sudo ip route del 192.168.10.0/24 2>/dev/null || true; "
-            "sudo ip route replace 192.168.10.0/24 dev wg0 2>/dev/null || true",
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl http://10.10.10.146:80/'; "
+            f"curl -sS --max-time 5 -o /dev/null -w 'WAN_80=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:80/ 2>/dev/null || true",
         ),
         expected=("WAN_LAN_PING_BLOCKED", "DIRECT_HTTP=000 EXIT=28", "WAN_80=000 EXIT=28"),
         timeout=40,
@@ -300,11 +347,21 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "if [ -f /tmp/opnsense-demo-http.pid ] && kill -0 $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null; "
-            "then echo 'HTTP 8080 ja estava rodando'; "
-            "else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & echo $! > /tmp/opnsense-demo-http.pid; fi; "
-            "sleep 1; echo \"PID=$(cat /tmp/opnsense-demo-http.pid)\"; "
-            "ss -ltn | grep -q ':8080' && echo 'LISTEN 8080 OK' || echo 'porta 8080 nao apareceu'",
+            terminal_script(
+                (
+                    (
+                        "python3 -m http.server 8080",
+                        "if [ -f /tmp/opnsense-demo-http.pid ] && kill -0 $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null; "
+                        "then echo 'HTTP 8080 ja estava rodando'; "
+                        "else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & "
+                        "echo $! > /tmp/opnsense-demo-http.pid; fi; echo \"PID=$(cat /tmp/opnsense-demo-http.pid)\"",
+                    ),
+                    (
+                        "ss -ltn | grep :8080",
+                        "sleep 1; ss -ltn | grep -q ':8080' && echo 'LISTEN 8080 OK' || echo 'porta 8080 nao apareceu'",
+                    ),
+                )
+            ),
         ),
         expected=("LISTEN 8080 OK",),
         accent="orange",
@@ -327,7 +384,15 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-wan",
         build=lambda s: wan(
             s,
-            f"curl -sS --max-time 7 -o /dev/null -w 'DNAT_8080=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:8080/",
+            terminal_script(
+                (
+                    (
+                        "curl http://10.10.10.146:8080/",
+                        f"curl -sS --max-time 7 -o /dev/null "
+                        f"-w 'DNAT_8080=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:8080/",
+                    ),
+                )
+            ),
         ),
         expected=("DNAT_8080=200 EXIT=0",),
         timeout=20,
@@ -349,9 +414,17 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "if [ -f /tmp/opnsense-demo-http.pid ]; "
-            "then kill $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null || true; rm -f /tmp/opnsense-demo-http.pid; echo 'HTTP 8080 parado'; "
-            "else echo 'sem pidfile'; fi",
+            terminal_script(
+                (
+                    (
+                        "kill $(cat /tmp/opnsense-demo-http.pid)",
+                        "if [ -f /tmp/opnsense-demo-http.pid ]; "
+                        "then kill $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null || true; "
+                        "rm -f /tmp/opnsense-demo-http.pid; echo 'HTTP 8080 parado'; "
+                        "else echo 'sem pidfile'; fi",
+                    ),
+                )
+            ),
         ),
         expected=("HTTP 8080 parado", "sem pidfile"),
         accent="orange",
@@ -372,13 +445,28 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-wan",
         build=lambda s: wan(
             s,
-            f"set -e; "
-            f"handshake=$(sudo wg show wg0 latest-handshakes | awk '{{print $2}}'); "
-            f"now=$(date +%s); age=$((now - handshake)); echo WG_HANDSHAKE_AGE=${{age}}s; "
-            f"[ \"$handshake\" -gt 0 ]; "
-            f"ping -c 2 -W 2 {s.wg_opnsense} >/tmp/wg-opnsense.out; echo WG_TUNNEL_OK; "
-            f"ping -c 2 -W 2 192.168.10.1 >/tmp/wg-gateway.out; echo WG_LAN_GATEWAY_OK; "
-            f"ping -c 2 -W 2 {s.lan_client} >/tmp/wg-client.out; echo WG_CLIENT_LAN_OK",
+            terminal_script(
+                (
+                    (
+                        "sudo wg show wg0 latest-handshakes",
+                        "handshake=$(sudo wg show wg0 latest-handshakes | awk '{print $2}'); "
+                        "now=$(date +%s); age=$((now - handshake)); echo WG_HANDSHAKE_AGE=${age}s; "
+                        "[ \"$handshake\" -gt 0 ]",
+                    ),
+                    (
+                        "ping -c 2 10.99.0.1",
+                        f"ping -c 2 -W 2 {s.wg_opnsense} >/tmp/wg-opnsense.out; echo WG_TUNNEL_OK",
+                    ),
+                    (
+                        "ping -c 2 192.168.10.1",
+                        "ping -c 2 -W 2 192.168.10.1 >/tmp/wg-gateway.out; echo WG_LAN_GATEWAY_OK",
+                    ),
+                    (
+                        "ping -c 2 192.168.10.100",
+                        f"ping -c 2 -W 2 {s.lan_client} >/tmp/wg-client.out; echo WG_CLIENT_LAN_OK",
+                    ),
+                )
+            ),
         ),
         expected=("WG_HANDSHAKE_AGE=", "WG_TUNNEL_OK", "WG_LAN_GATEWAY_OK", "WG_CLIENT_LAN_OK"),
         timeout=30,

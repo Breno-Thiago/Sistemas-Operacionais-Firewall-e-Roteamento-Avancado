@@ -163,6 +163,10 @@ Resultado esperado:
 - servidor HTTP temporário é encerrado;
 - WireGuard acessa gateway e LAN.
 
+Cada card mostra os comandos com prompt da VM, como
+`lab@cliente-wan:~$ curl http://10.10.10.146:8080/`, e a evidência logo abaixo.
+As cores destacam comandos, sucessos, falhas e dicas.
+
 ## 8. Rodar Dashboard Sem Container
 
 Se Docker ou Compose não estiverem disponíveis no host:

@@ -83,6 +83,30 @@ function outputText(result) {
   ].join("\n").trim();
 }
 
+function terminalClass(line) {
+  if (line.startsWith("@@CMD ")) return "term-cmd";
+  if (line.startsWith("─ stderr") || /^Warning:|^curl:|^ERROR|^TIMEOUT/.test(line)) return "term-err";
+  if (line.startsWith("💡")) return "term-hint";
+  if (line.startsWith("─ exit=0")) return "term-exit-ok";
+  if (line.startsWith("─ exit=")) return "term-exit-fail";
+  if (/(^|_)(OK|UP|BLOCKED|VALIDADO|READY)|=200 EXIT=0|=204 EXIT=0|=000 EXIT=28|LAN_IP=|DEFAULT_VIA=|DNS_SERVER=|WG_/.test(line)) return "term-ok";
+  if (/DOWN|FAIL|falhou|Atenção|nao apareceu/.test(line)) return "term-fail";
+  if (/^ROUTE_|^CLIENT_ADDRESS_MODE=|^PID=/.test(line)) return "term-info";
+  return "";
+}
+
+function terminalHTML(text) {
+  return text.split("\n").map((line) => {
+    const cls = terminalClass(line);
+    const clean = line.startsWith("@@CMD ") ? line.slice(6) : line;
+    return `<span class="${cls}">${esc(clean)}</span>`;
+  }).join("\n");
+}
+
+function setOutput(node, text) {
+  node.innerHTML = terminalHTML(text);
+}
+
 function setResult(id, result) {
   const node = document.querySelector(`[data-check-id="${id}"]`);
   if (!node) return;
@@ -92,7 +116,7 @@ function setResult(id, result) {
   const badge = node.querySelector(".result-badge");
   badge.textContent = result.ok ? "sucesso" : "falhou";
   badge.className = `result-badge ${cls}`;
-  node.querySelector(".output").textContent = outputText(result);
+  setOutput(node.querySelector(".output"), outputText(result));
   updateDots();
 }
 
@@ -192,7 +216,7 @@ async function runCheck(id) {
   const badge = node.querySelector(".result-badge");
   node.dataset.state = "running";
   node.querySelector(".state").textContent = stateLabels.running;
-  node.querySelector(".output").textContent = "injetando comando no console da VM…";
+  setOutput(node.querySelector(".output"), "@@CMD dashboard@local:~$ aguardando execução\ninjetando comando no console da VM…");
   badge.textContent = "executando"; badge.className = "result-badge running";
   button.disabled = true;
   updateDots();
