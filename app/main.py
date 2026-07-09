@@ -508,7 +508,7 @@ def run_check(check_id: str, mode: str | None = Query(default=None)) -> RunResul
             returncode=124,
             ok=False,
             summary="Tempo limite atingido.",
-            hint=mode_hint(s),
+            hint=mode_hint(check),
         )
 
     combined = f"{completed.stdout}\n{completed.stderr}"
@@ -526,7 +526,7 @@ def run_check(check_id: str, mode: str | None = Query(default=None)) -> RunResul
         returncode=completed.returncode,
         ok=ok,
         summary=check.success_label if ok else "Validação falhou ou retornou saída inesperada.",
-        hint="" if ok else mode_hint(s),
+        hint="" if ok else mode_hint(check),
     )
 
 
@@ -539,8 +539,25 @@ def expected_tokens_ok(output: str, tokens: tuple[str, ...]) -> bool:
     return all(token in output for token in tokens)
 
 
-def mode_hint(s: Settings) -> str:
-    return "As VMs precisam estar rodando no KVM/libvirt local. Rode bash infra/provision-clients.sh para gerar e instalar a chave local do lab."
+def mode_hint(check: Check) -> str:
+    hints = {
+        "nat-out": (
+            "O cliente LAN chegou no OPNsense, mas nao saiu para a internet. "
+            "Verifique WAN/NAT/DNS do OPNsense e rode bash infra/diagnose-lab.sh."
+        ),
+        "wireguard": (
+            "O cliente WAN nao recebeu resposta do WireGuard. Verifique a WAN do OPNsense, "
+            "o servico WireGuard e rode bash infra/diagnose-lab.sh."
+        ),
+        "gateway-dhcp-dns": (
+            "Confira se o cliente-lan esta em 192.168.10.100 e usando 192.168.10.1 como gateway/DNS. "
+            "Rode bash infra/provision-clients.sh."
+        ),
+    }
+    return hints.get(
+        check.id,
+        "Confira se as VMs estao rodando no KVM/libvirt local e rode bash infra/diagnose-lab.sh.",
+    )
 
 
 def tcp_reachable(host: str, port: int, timeout: float) -> bool:
