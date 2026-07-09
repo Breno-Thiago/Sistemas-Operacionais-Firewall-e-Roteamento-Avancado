@@ -109,6 +109,47 @@ q35
 
 Esses aliases funcionam melhor entre Ubuntu, Fedora, Arch e openSUSE.
 
+## Testes 3 e 9 falham juntos
+
+Sintomas:
+
+```text
+Teste 3: ping 192.168.10.1 funciona, mas ping 1.1.1.1 falha
+Teste 3: curl: Could not resolve host: opnsense.org
+Teste 9: WireGuard mostra 0 B received e ping 10.99.0.1 falha
+```
+
+Isso normalmente significa que a LAN chega no OPNsense, mas a WAN do OPNsense
+ou a NAT do host não está funcionando.
+
+Rode o diagnóstico:
+
+```bash
+bash infra/diagnose-lab.sh
+```
+
+Leitura rápida:
+
+- Se `cliente-wan` não pinga `1.1.1.1`, o problema está na rede NAT `wan-lab`
+  do libvirt/Fedora.
+- Se `cliente-wan` pinga `1.1.1.1`, mas não pinga `10.10.10.146`, o OPNsense
+  não está respondendo pela WAN esperada.
+- Se `cliente-wan` pinga `10.10.10.146`, mas WireGuard não tem handshake, o
+  problema está no serviço/regra WireGuard dentro do OPNsense.
+- Se `cliente-lan` pinga `192.168.10.1`, mas não `1.1.1.1`, o NAT/saída WAN do
+  OPNsense não está funcionando.
+
+Primeiras tentativas seguras:
+
+```bash
+virsh -c qemu:///system reboot opnsense-fw
+sleep 90
+bash infra/provision-clients.sh
+docker compose restart dashboard
+```
+
+Depois rode os testes 3 e 9 novamente.
+
 ## Docker build travando em apt-get update
 
 Sintoma:
