@@ -55,6 +55,7 @@ Lista completa dos arquivos em [docs/arquivos-drive.md](docs/arquivos-drive.md).
 Depois coloque as imagens em `local/vm-images/` e rode:
 
 ```bash
+bash infra/check-host.sh
 bash infra/setup-all.sh
 ```
 
@@ -107,6 +108,9 @@ Se Docker der trabalho na distro, rode o dashboard sem container:
 ```bash
 bash infra/run-dashboard-native.sh
 ```
+
+Problemas comuns de Docker, grupos, Cockpit e imagens estão em
+[docs/solucao-problemas.md](docs/solucao-problemas.md).
 
 ## Roteiro de Demonstração
 

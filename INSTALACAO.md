@@ -52,6 +52,12 @@ faça logout e login de novo
 Isso é necessário para os grupos `libvirt`, `kvm` e `docker` valerem no seu
 usuário.
 
+Para conferir se a sessão atual já está pronta:
+
+```bash
+bash infra/check-host.sh
+```
+
 ## 4. Baixar Arquivos do Drive
 
 Baixe os arquivos desta pasta:
@@ -92,6 +98,7 @@ e não precisa ser enviada junto com o pacote do Drive.
 ## 5. Subir Tudo
 
 ```bash
+bash infra/check-host.sh
 bash infra/setup-all.sh
 ```
 
@@ -132,6 +139,12 @@ Se o Cockpit não estiver ativo:
 
 ```bash
 sudo bash infra/setup-cockpit-local.sh
+```
+
+Se você já estiver dentro da pasta `infra/`, use:
+
+```bash
+sudo bash setup-cockpit-local.sh
 ```
 
 ## 7. Validar
@@ -209,3 +222,14 @@ done
 ```
 
 Os discos importados ficam em `/var/lib/libvirt/images/`.
+
+## 11. Erros Comuns
+
+Veja [docs/solucao-problemas.md](docs/solucao-problemas.md) para:
+
+- Docker sem permissão em `/var/run/docker.sock`;
+- sessão que ainda não pegou os grupos `docker`, `kvm` e `libvirt`;
+- build Docker travando em `apt-get update`;
+- Cockpit com caminho relativo errado;
+- imagens baixadas com nomes diferentes;
+- validação manual de SSH, VMs e redes.
