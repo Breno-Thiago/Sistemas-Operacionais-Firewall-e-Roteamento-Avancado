@@ -53,6 +53,12 @@ document.addEventListener("keydown", (e) => {
 });
 
 document.addEventListener("click", async (e) => {
+  const wide = e.target.closest("[data-wide-toggle]");
+  if (wide) {
+    toggleTerminalWide(wide);
+    return;
+  }
+
   const btn = e.target.closest(".copy");
   if (!btn) return;
   const text = btn.dataset.copyTarget
@@ -73,6 +79,15 @@ function endpoint(path) { const sep = path.includes("?") ? "&" : "?"; return `${
 function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
 function statChip(label, value, tone = "blue") { return `<div class="stat stat-${tone}"><span>${esc(label)}</span><b>${esc(value)}</b></div>`; }
 function notify(message, tone = "ok") { toast.textContent = message; toast.dataset.state = tone; }
+
+function toggleTerminalWide(btn) {
+  const card = btn.closest(".check");
+  if (!card) return;
+  const enabled = !card.classList.contains("terminal-wide");
+  card.classList.toggle("terminal-wide", enabled);
+  btn.textContent = enabled ? "↔ layout dividido" : "↔ terminal amplo";
+  btn.setAttribute("aria-pressed", String(enabled));
+}
 
 function outputText(result) {
   return [
@@ -166,6 +181,7 @@ function slideHTML(check, index) {
             <span class="win-dots"><i></i><i></i><i></i></span>
             <span class="io-tag out">saída</span>
             <span class="io-sub">evidência de <b>${esc(check.host)}</b></span>
+            <button class="terminal-toggle" type="button" data-wide-toggle aria-pressed="false" title="alternar largura do terminal">↔ terminal amplo</button>
             <span class="result-badge">aguardando</span>
           </header>
           <div class="read">

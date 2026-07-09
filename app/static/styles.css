@@ -79,6 +79,8 @@ body::after {
 .copy { border: 1px solid var(--line-2); background: transparent; color: var(--muted); border-radius: 7px; font: inherit; font-size: 11px; font-weight: 700; line-height: 1; padding: 4px 7px; cursor: pointer; }
 .copy:hover { border-color: var(--accent); color: var(--accent); }
 .copy.done { color: var(--green); border-color: var(--green); }
+.terminal-toggle { border: 1px solid var(--line-2); background: color-mix(in srgb, var(--ink) 3%, transparent); color: var(--muted); border-radius: 7px; font: inherit; font-size: 11px; font-weight: 800; line-height: 1; padding: 5px 8px; cursor: pointer; white-space: nowrap; }
+.terminal-toggle:hover, .terminal-toggle[aria-pressed="true"] { border-color: var(--green); color: var(--green); background: color-mix(in srgb, var(--green) 9%, transparent); }
 
 /* app shell */
 .app { display: grid; grid-template-columns: 272px minmax(0,1fr); height: 100vh; }
@@ -181,6 +183,11 @@ body::after {
 .io-body { flex: 1; min-height: 0; overflow: auto; padding: 13px 15px; }
 .io-foot { flex: 0 0 auto; padding: 11px 14px; border-top: 1px solid var(--line); }
 .io-foot .run { width: 100%; }
+.check.terminal-wide .io { grid-template-columns: minmax(0,1fr); }
+.check.terminal-wide .io-in { display: none; }
+.check.terminal-wide .io-out { min-width: 0; }
+.check.terminal-wide .read { display: none; }
+.check.terminal-wide pre.output { min-height: 520px; font-size: 16px; }
 
 /* read = explica a saída */
 .read { flex: 0 0 auto; padding: 11px 15px; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--green) 5%, var(--panel)); max-height: 42%; overflow: auto; }

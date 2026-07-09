@@ -13,7 +13,8 @@ objetivos na saída.
 A saída aparece em formato de terminal. Linhas como
 `lab@cliente-lan:~$ ip route get 1.1.1.1` indicam exatamente qual comando foi
 executado em qual máquina; os marcadores `*_OK`, bloqueios e erros recebem cores
-diferentes para facilitar a leitura.
+diferentes para facilitar a leitura. Use o botão `terminal amplo` quando quiser
+mostrar a saída ocupando a largura total do card.
 
 ## 1. Status do Laboratório
 

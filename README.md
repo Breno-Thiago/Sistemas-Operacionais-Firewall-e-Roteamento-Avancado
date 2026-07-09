@@ -128,7 +128,8 @@ Cada card mostra a entrada e a saída como um transcript de terminal: antes de
 cada etapa aparece o prompt da máquina executada, por exemplo
 `lab@cliente-lan:~$ ip route get 1.1.1.1`, seguido da evidência retornada. A
 tela colore comandos, marcadores de sucesso, falhas e dicas para facilitar a
-leitura durante a apresentação.
+leitura durante a apresentação. O botão `terminal amplo` faz a saída ocupar a
+largura total do card quando for melhor mostrar apenas a evidência.
 
 Ele valida:
 
