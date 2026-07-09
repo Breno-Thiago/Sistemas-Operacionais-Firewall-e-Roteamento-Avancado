@@ -1,0 +1,11 @@
+<network>
+  <name>lan-lab</name>
+  <uuid>320788a0-bcbb-4eff-9c2d-35adc31611e1</uuid>
+  <bridge name='virbr-lan' stp='on' delay='0'/>
+  <mac address='52:54:00:6c:70:66'/>
+  <!-- Rede LAN isolada: OPNsense (192.168.10.1) e o servidor DHCP.
+       O host recebe 192.168.10.254 no virbr-lan apenas para gerenciar
+       (o dashboard, em network_mode host, faz SSH em lab@192.168.10.100).
+       Sem <dhcp> aqui de proposito, para nao competir com o OPNsense. -->
+  <ip address='192.168.10.254' netmask='255.255.255.0'/>
+</network>

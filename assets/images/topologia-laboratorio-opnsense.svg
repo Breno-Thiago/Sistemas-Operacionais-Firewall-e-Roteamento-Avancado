@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-label="Topologia do laboratorio remoto com OPNsense">
+  <defs>
+    <style>
+      .bg { fill: #f7faff; }
+      text { font-family: Arial, Helvetica, sans-serif; }
+      .title { font-size: 52px; font-weight: 700; fill: #07194d; }
+      .label { font-size: 28px; font-weight: 700; fill: #07194d; }
+      .small { font-size: 20px; font-weight: 600; fill: #1b2a42; }
+      .tiny { font-size: 17px; font-weight: 600; fill: #1b2a42; }
+      .muted { font-size: 18px; font-weight: 600; fill: #526070; }
+      .card { fill: #ffffff; stroke: #c9d7ea; stroke-width: 2; }
+      .shadow { filter: drop-shadow(0 12px 18px rgba(18, 42, 84, .14)); }
+      .blue { fill: #174f86; }
+      .blue-stroke { stroke: #174f86; }
+      .wan { fill: #c8231d; }
+      .wan-stroke { stroke: #c8231d; }
+      .lan { fill: #1359b8; }
+      .lan-stroke { stroke: #1359b8; }
+      .wg { fill: #7a2fc7; }
+      .wg-stroke { stroke: #7a2fc7; }
+      .green { fill: #14723d; }
+      .green-stroke { stroke: #14723d; }
+      .arrow { stroke: #174f86; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowBlue); }
+      .arrow-red { stroke: #c8231d; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowRed); }
+      .arrow-blue { stroke: #1359b8; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowLan); }
+      .arrow-purple { stroke: #7a2fc7; stroke-width: 10; fill: none; stroke-linecap: round; stroke-linejoin: round; marker-end: url(#arrowWg); }
+      .dash-purple { stroke: #7a2fc7; stroke-width: 7; fill: none; stroke-linecap: round; stroke-dasharray: 12 14; marker-end: url(#arrowWg); }
+    </style>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#174f86"/>
+    </marker>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#c8231d"/>
+    </marker>
+    <marker id="arrowLan" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#1359b8"/>
+    </marker>
+    <marker id="arrowWg" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#7a2fc7"/>
+    </marker>
+    <linearGradient id="serverGrad" x1="0" x2="1">
+      <stop offset="0" stop-color="#0f315c"/>
+      <stop offset="1" stop-color="#061a38"/>
+    </linearGradient>
+    <linearGradient id="fwGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#20314b"/>
+      <stop offset="1" stop-color="#0b1322"/>
+    </linearGradient>
+  </defs>
+
+  <rect class="bg" width="1600" height="900"/>
+  <rect x="0" y="0" width="1600" height="18" fill="#174f86"/>
+  <text class="title" x="800" y="82" text-anchor="middle">Topologia do laboratório remoto</text>
+
+  <g class="shadow">
+    <rect class="card" x="48" y="170" width="190" height="280" rx="16"/>
+    <rect class="blue" x="48" y="170" width="190" height="72" rx="16"/>
+    <rect class="blue" x="48" y="222" width="190" height="20"/>
+    <text x="143" y="207" text-anchor="middle" font-family="Arial" font-size="27" font-weight="700" fill="#fff">Aluno</text>
+    <text x="143" y="232" text-anchor="middle" font-family="Arial" font-size="20" font-weight="700" fill="#fff">acesso remoto</text>
+    <circle cx="118" cy="318" r="38" fill="#f0d2bd" stroke="#07194d" stroke-width="3"/>
+    <path d="M80 302 Q101 267 142 284 Q130 307 94 321 Z" fill="#111827"/>
+    <rect x="96" y="342" width="88" height="58" rx="8" fill="#d9ecff" stroke="#07194d" stroke-width="4"/>
+    <circle cx="140" cy="371" r="20" fill="none" stroke="#1359b8" stroke-width="3"/>
+    <path d="M120 371 H160 M140 351 V391 M126 356 Q140 365 154 356 M126 386 Q140 377 154 386" fill="none" stroke="#1359b8" stroke-width="2"/>
+  </g>
+
+  <path class="arrow" d="M250 310 H312"/>
+
+  <g class="shadow">
+    <rect class="card" x="328" y="170" width="190" height="330" rx="16"/>
+    <rect class="blue" x="328" y="170" width="190" height="72" rx="16"/>
+    <rect class="blue" x="328" y="222" width="190" height="20"/>
+    <text x="423" y="207" text-anchor="middle" font-family="Arial" font-size="27" font-weight="700" fill="#fff">Servidor</text>
+    <text x="423" y="232" text-anchor="middle" font-family="Arial" font-size="20" font-weight="700" fill="#fff">remoto</text>
+    <rect x="380" y="278" width="86" height="122" rx="12" fill="url(#serverGrad)" stroke="#061a38" stroke-width="4"/>
+    <rect x="394" y="299" width="44" height="8" rx="4" fill="#415a77"/>
+    <rect x="394" y="324" width="44" height="8" rx="4" fill="#415a77"/>
+    <rect x="394" y="349" width="44" height="8" rx="4" fill="#415a77"/>
+    <circle cx="450" cy="304" r="7" fill="#77dd77"/>
+    <circle cx="450" cy="329" r="7" fill="#77dd77"/>
+    <circle cx="450" cy="354" r="7" fill="#77dd77"/>
+    <path d="M423 405 V433" stroke="#174f86" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 14"/>
+    <rect x="363" y="433" width="120" height="52" rx="10" fill="#eef6ff" stroke="#174f86" stroke-width="3"/>
+    <text class="small" x="423" y="466" text-anchor="middle">Cockpit</text>
+  </g>
+
+  <path class="arrow" d="M530 310 H586"/>
+
+  <g class="shadow">
+    <rect class="card" x="600" y="150" width="430" height="380" rx="18"/>
+    <rect class="blue" x="600" y="150" width="430" height="78" rx="18"/>
+    <rect class="blue" x="600" y="208" width="430" height="20"/>
+    <text x="815" y="199" text-anchor="middle" font-family="Arial" font-size="34" font-weight="700" fill="#fff">KVM/libvirt</text>
+    <rect x="628" y="260" width="374" height="206" rx="18" fill="#f9fcff" stroke="#1359b8" stroke-width="4" stroke-dasharray="8 10"/>
+    <g>
+      <rect x="650" y="300" width="104" height="126" rx="12" fill="#ffffff" stroke="#1359b8" stroke-width="3"/>
+      <text class="tiny" x="702" y="328" text-anchor="middle">opnsense-fw</text>
+      <rect x="682" y="352" width="40" height="34" rx="4" fill="#d9ecff" stroke="#07194d" stroke-width="3"/>
+      <path d="M702 346 L724 358 L702 370 L680 358 Z" fill="#65a7f4" stroke="#1359b8" stroke-width="2"/>
+      <path d="M680 358 V382 L702 394 V370 Z M724 358 V382 L702 394 V370 Z" fill="#9dc9fb" stroke="#1359b8" stroke-width="2"/>
+    </g>
+    <g>
+      <rect x="763" y="300" width="104" height="126" rx="12" fill="#ffffff" stroke="#1359b8" stroke-width="3"/>
+      <text class="tiny" x="815" y="328" text-anchor="middle">cliente-wan</text>
+      <rect x="795" y="352" width="40" height="34" rx="4" fill="#d9ecff" stroke="#07194d" stroke-width="3"/>
+      <path d="M815 346 L837 358 L815 370 L793 358 Z" fill="#65a7f4" stroke="#1359b8" stroke-width="2"/>
+      <path d="M793 358 V382 L815 394 V370 Z M837 358 V382 L815 394 V370 Z" fill="#9dc9fb" stroke="#1359b8" stroke-width="2"/>
+    </g>
+    <g>
+      <rect x="876" y="300" width="104" height="126" rx="12" fill="#ffffff" stroke="#1359b8" stroke-width="3"/>
+      <text class="tiny" x="928" y="328" text-anchor="middle">cliente-lan</text>
+      <rect x="908" y="352" width="40" height="34" rx="4" fill="#d9ecff" stroke="#07194d" stroke-width="3"/>
+      <path d="M928 346 L950 358 L928 370 L906 358 Z" fill="#65a7f4" stroke="#1359b8" stroke-width="2"/>
+      <path d="M906 358 V382 L928 394 V370 Z M950 358 V382 L928 394 V370 Z" fill="#9dc9fb" stroke="#1359b8" stroke-width="2"/>
+    </g>
+  </g>
+
+  <path class="arrow" d="M1045 310 H1094"/>
+
+  <g class="shadow">
+    <rect x="1115" y="155" width="198" height="416" rx="18" fill="#ffffff" stroke="#14723d" stroke-width="4"/>
+    <rect x="1115" y="155" width="198" height="72" rx="18" fill="#14723d"/>
+    <rect x="1115" y="207" width="198" height="20" fill="#14723d"/>
+    <text x="1214" y="201" text-anchor="middle" font-family="Arial" font-size="34" font-weight="700" fill="#fff">OPNsense</text>
+    <rect x="1142" y="258" width="144" height="120" rx="20" fill="url(#fwGrad)" stroke="#0b1322" stroke-width="5"/>
+    <path d="M1214 278 L1256 293 V329 Q1254 355 1214 370 Q1174 355 1172 329 V293 Z" fill="#fff"/>
+    <path d="M1214 292 L1241 302 V327 Q1238 342 1214 354 Q1190 342 1187 327 V302 Z" fill="#ff7a1a"/>
+    <path d="M1190 315 H1238 M1197 301 V344 M1215 295 V353 M1231 305 V342" stroke="#fff" stroke-width="5"/>
+    <circle cx="1266" cy="284" r="8" fill="#ffd166"/>
+    <circle cx="1266" cy="316" r="8" fill="#86ef7d"/>
+    <circle cx="1266" cy="348" r="8" fill="#86ef7d"/>
+    <rect x="1138" y="398" width="152" height="120" rx="14" fill="#effaf3" stroke="#14723d" stroke-width="3"/>
+    <text x="1214" y="432" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700" fill="#0f5132">Gateway</text>
+    <text x="1214" y="462" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700" fill="#0f5132">Firewall</text>
+    <text x="1214" y="492" text-anchor="middle" font-family="Arial" font-size="22" font-weight="700" fill="#0f5132">NAT, DHCP e VPN</text>
+  </g>
+
+  <g class="shadow">
+    <rect x="1360" y="185" width="190" height="86" rx="16" fill="#fffafa" stroke="#c8231d" stroke-width="3"/>
+    <text x="1455" y="224" text-anchor="middle" font-family="Arial" font-size="31" font-weight="700" fill="#c8231d">WAN</text>
+    <text x="1455" y="250" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#c8231d">10.10.10.0/24</text>
+    <rect x="1360" y="330" width="190" height="86" rx="16" fill="#f7fbff" stroke="#1359b8" stroke-width="3"/>
+    <text x="1455" y="369" text-anchor="middle" font-family="Arial" font-size="31" font-weight="700" fill="#1359b8">LAN</text>
+    <text x="1455" y="395" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#1359b8">192.168.10.0/24</text>
+    <rect x="1360" y="475" width="190" height="86" rx="16" fill="#fbf8ff" stroke="#7a2fc7" stroke-width="3"/>
+    <text x="1455" y="514" text-anchor="middle" font-family="Arial" font-size="31" font-weight="700" fill="#7a2fc7">WireGuard</text>
+    <text x="1455" y="540" text-anchor="middle" font-family="Arial" font-size="23" font-weight="700" fill="#7a2fc7">10.99.0.0/24</text>
+  </g>
+
+  <path class="arrow-red" d="M1315 258 H1342"/>
+  <path class="arrow-blue" d="M1315 372 H1342"/>
+  <path class="arrow-purple" d="M1315 516 H1342"/>
+
+  <g>
+    <rect x="1035" y="600" width="248" height="110" rx="16" fill="#ffffff" stroke="#c9d7ea" stroke-width="2"/>
+    <text class="small" x="1159" y="632" text-anchor="middle">Interfaces no OPNsense</text>
+    <text class="tiny" x="1058" y="664">WAN: 10.10.10.146</text>
+    <text class="tiny" x="1058" y="690">LAN: 192.168.10.1</text>
+    <text class="tiny" x="1058" y="716">wg0: 10.99.0.1</text>
+  </g>
+
+  <g>
+    <rect x="1320" y="615" width="235" height="86" rx="14" fill="#fffafa" stroke="#c8231d" stroke-width="2"/>
+    <text class="tiny" x="1438" y="646" text-anchor="middle">cliente-wan</text>
+    <text class="tiny" x="1438" y="672" text-anchor="middle">10.10.10.171 / wg0 10.99.0.2</text>
+  </g>
+  <g>
+    <rect x="1320" y="720" width="235" height="70" rx="14" fill="#f7fbff" stroke="#1359b8" stroke-width="2"/>
+    <text class="tiny" x="1438" y="750" text-anchor="middle">cliente-lan</text>
+    <text class="tiny" x="1438" y="776" text-anchor="middle">192.168.10.100</text>
+  </g>
+
+  <path class="dash-purple" d="M1322 656 C1250 650 1228 610 1220 535"/>
+  <text x="1265" y="618" font-family="Arial" font-size="19" font-weight="700" fill="#7a2fc7">túnel WireGuard</text>
+
+  <g class="shadow">
+    <rect x="250" y="782" width="1100" height="70" rx="18" fill="#f4fbf6" stroke="#14723d" stroke-width="3"/>
+    <circle cx="302" cy="817" r="25" fill="#14723d"/>
+    <text x="302" y="827" text-anchor="middle" font-family="Arial" font-size="34" font-weight="700" fill="#fff">i</text>
+    <text x="800" y="827" text-anchor="middle" font-family="Arial" font-size="31" font-weight="700" fill="#0f5132">OPNsense centraliza gateway, firewall, NAT, DHCP e VPN</text>
+  </g>
+</svg>

@@ -1,0 +1,17 @@
+# Aplicado dentro da VM cliente-lan em /etc/netplan/99-lab-static.yaml (chmod 600).
+# Fixa o IP da LAN em 192.168.10.100 de forma deterministica, independente da
+# ordem de leases do DHCP do OPNsense. Necessario porque o DNAT WAN:8080 ->
+# 192.168.10.100:8080 exige que o cliente-lan tenha SEMPRE esse endereco.
+# Gateway e DNS continuam sendo o OPNsense (192.168.10.1).
+network:
+  version: 2
+  ethernets:
+    enp1s0:
+      dhcp4: false
+      dhcp6: false
+      addresses: [192.168.10.100/24]
+      routes:
+        - to: default
+          via: 192.168.10.1
+      nameservers:
+        addresses: [192.168.10.1]

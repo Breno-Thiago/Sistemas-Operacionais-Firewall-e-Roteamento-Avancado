@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OPNsense Lab · Console</title>
+    <link rel="stylesheet" href="/static/styles.css?v=15" />
+  </head>
+  <body>
+    <div class="app">
+      <aside class="sidebar">
+        <div class="brand">
+          <span class="brand-mark">OPN</span>
+          <div class="brand-txt">
+            <p>Firewall · Roteamento · VPN</p>
+            <strong>Lab OPNsense</strong>
+          </div>
+        </div>
+        <span class="mode-chip"><span class="led"></span>Laboratório local · KVM</span>
+
+        <div class="side-section">
+          <div class="side-label">Endereços do lab</div>
+          <div class="stats" id="configCards"></div>
+        </div>
+
+        <div class="side-section">
+          <div class="side-label">Acessos</div>
+          <div class="access-item">
+            <a id="opnsenseLink" class="btn btn-accent" target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path d="M12 3l7 2.7v5.1c0 4.3-3 7.4-7 8.9-4-1.5-7-4.6-7-8.9V5.7L12 3z"/></svg>
+              OPNsense
+            </a>
+            <span class="cred-inline">
+              <b id="opnUser">root</b><span class="sep">/</span><b id="opnPass">opnsense</b>
+              <button class="copy" data-copy-target="opnPass" title="copiar senha">⧉</button>
+            </span>
+          </div>
+          <div class="access-item">
+            <a id="cockpitLink" class="btn btn-ghost" target="_blank" rel="noreferrer">
+              <svg viewBox="0 0 24 24" class="ic" aria-hidden="true"><path d="M4 20V10M9 20V4M14 20v-7M19 20V8"/></svg>
+              Cockpit
+            </a>
+          </div>
+        </div>
+
+        <div class="side-foot">
+          <button id="themeToggle" class="btn btn-ghost theme-toggle" type="button">Tema · Auto</button>
+          <span class="preflight" id="preflightNote">Verificando…</span>
+        </div>
+      </aside>
+
+      <main class="board">
+        <div class="board-head">
+          <div class="headline">
+            <span class="io-tag in">entrada</span><span class="hl-txt">comando via SSH no console da VM</span>
+            <span class="arrowto">→</span>
+            <span class="io-tag out">saída</span><span class="hl-txt">evidência que a VM devolve</span>
+          </div>
+          <div class="stage-nav">
+            <span class="stage-section" id="stageSection">—</span>
+            <span class="stage-count" id="stageCount">00/00</span>
+            <div class="stage-dots" id="stageDots"></div>
+            <button id="runAll" class="btn btn-accent btn-sm" type="button">▶ Rodar tudo</button>
+          </div>
+        </div>
+
+        <div class="carousel">
+          <button class="arrow" id="prevBtn" type="button" aria-label="Anterior">‹</button>
+          <div class="stage" id="checks"></div>
+          <button class="arrow" id="nextBtn" type="button" aria-label="Próximo">›</button>
+        </div>
+
+        <div class="footbar">
+          <span class="toast" id="toast" aria-live="polite"></span>
+          <span class="kbd-hint"><kbd>←</kbd> <kbd>→</kbd> navega · <kbd>Enter</kbd> executa</span>
+        </div>
+      </main>
+    </div>
+
+    <script src="/static/app.js?v=15"></script>
+  </body>
+</html>

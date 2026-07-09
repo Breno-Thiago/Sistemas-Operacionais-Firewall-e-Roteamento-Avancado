@@ -1,0 +1,16 @@
+.git
+.env
+local
+tmp
+output
+.playwright
+.playwright-cli
+.venv*
+__pycache__
+*.pyc
+*.qcow2
+*.img
+*.iso
+*.raw
+*.vdi
+*.vmdk

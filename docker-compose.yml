@@ -1,0 +1,24 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: app/Dockerfile
+    network_mode: host
+    environment:
+      LAB_MODE: ${LAB_MODE:-local}
+      OPNSENSE_URL: ${OPNSENSE_URL:-https://192.168.10.1}
+      COCKPIT_URL: ${COCKPIT_URL:-http://localhost:9090}
+      LAN_CLIENT: ${LAN_CLIENT:-192.168.10.100}
+      WAN_CLIENT: ${WAN_CLIENT:-10.10.10.171}
+      OPNSENSE_WAN: ${OPNSENSE_WAN:-10.10.10.146}
+      WG_OPNSENSE: ${WG_OPNSENSE:-10.99.0.1}
+      WG_CLIENT: ${WG_CLIENT:-10.99.0.2}
+      SSH_USER: ${SSH_USER:-lab}
+      OPNSENSE_USER: ${OPNSENSE_USER:-root}
+      OPNSENSE_PASS: ${OPNSENSE_PASS:-opnsense}
+      COCKPIT_USER: ${COCKPIT_USER:-}
+      SSH_KEY_PATH: ${SSH_KEY_PATH:-/home/app/.ssh/ufs_so_lab_do}
+      SSH_EXTRA_OPTS: ${SSH_EXTRA_OPTS:-}
+    volumes:
+      - ~/.ssh:/home/app/.ssh:ro
+    restart: unless-stopped
