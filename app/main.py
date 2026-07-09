@@ -170,72 +170,61 @@ CHECKS: tuple[Check, ...] = (
         ),
     ),
     Check(
-        id="gateway-dhcp-dns",
-        section="Serviços da LAN",
-        title="Gateway, DHCP e DNS",
-        summary="Mostra IP, rota padrão e DNS do cliente na LAN.",
-        explanation="O cliente-lan usa 192.168.10.100 na LAN, tem o OPNsense (192.168.10.1) como gateway padrão e resolve nomes por ele.",
-        success_label="Cliente configurado automaticamente",
+        id="lan-internet",
+        section="LAN e internet",
+        title="LAN, DNS, NAT e HTTPS",
+        summary="Valida IP da LAN, gateway, DNS, NAT de saída e HTTPS externo.",
+        explanation="Confirma que o cliente LAN usa o OPNsense como gateway/DNS e acessa a internet por NAT, incluindo HTTPS para o Google.",
+        success_label="LAN com DNS, NAT e HTTPS",
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "ip -br a; ip route; resolvectl dns enp1s0; resolvectl query opnsense.org | sed -n '1,8p'",
+            "set -e; "
+            "ip -br a; "
+            "ip route; "
+            "resolvectl dns enp1s0; "
+            "resolvectl query www.google.com >/tmp/google-dns.out; sed -n '1,8p' /tmp/google-dns.out; echo DNS_GOOGLE_OK; "
+            "ping -c 2 -W 2 192.168.10.1; echo LAN_GATEWAY_OK; "
+            "ping -c 2 -W 2 1.1.1.1; echo INTERNET_IP_OK; "
+            "curl -L -sS --connect-timeout 5 --max-time 15 -o /dev/null "
+            "-w 'HTTPS_GOOGLE=%{http_code} EXIT=%{exitcode}\\n' https://www.google.com",
         ),
-        expected=("192.168.10.100", "default via 192.168.10.1", "192.168.10.1", "opnsense.org"),
-        accent="blue",
+        expected=(
+            "192.168.10.100",
+            "default via 192.168.10.1",
+            "192.168.10.1",
+            "DNS_GOOGLE_OK",
+            "LAN_GATEWAY_OK",
+            "INTERNET_IP_OK",
+            "HTTPS_GOOGLE=200 EXIT=0",
+        ),
+        timeout=45,
+        accent="green",
         steps=(
             ("ip -br a", "IP do cliente na LAN — deve ser 192.168.10.100."),
             ("ip route", "Rota padrão apontando para o OPNsense (192.168.10.1)."),
             ("resolvectl dns enp1s0", "Servidor DNS entregue pela LAN — o próprio OPNsense."),
-            ("resolvectl query opnsense.org", "Testa resolução de nome usando esse DNS."),
+            ("resolvectl query www.google.com", "Valida resolução DNS externa usando o OPNsense."),
+            ("ping -c 2 192.168.10.1", "Alcança o gateway OPNsense dentro da LAN."),
+            ("ping -c 2 1.1.1.1", "Sai para a internet por IP — prova o NAT de saída."),
+            ("curl https://www.google.com", "Valida navegação HTTPS externa real."),
         ),
         reads=(
             ("192.168.10.100/24", "IP do cliente na LAN."),
             ("default via 192.168.10.1", "Gateway padrão é o OPNsense."),
             ("192.168.10.1", "DNS entregue é o OPNsense."),
-            ("opnsense.org", "O nome foi resolvido com sucesso."),
-        ),
-    ),
-    Check(
-        id="nat-out",
-        section="Conectividade",
-        title="NAT de saída",
-        summary="Valida que a LAN acessa redes externas usando o OPNsense.",
-        explanation="O cliente tem IP privado. O OPNsense traduz a origem para o IP da WAN e permite retorno das respostas.",
-        success_label="LAN acessa a internet",
-        host="cliente-lan",
-        build=lambda s: lan(
-            s,
-            "set -e; "
-            "ping -c 2 -W 2 192.168.10.1; echo LAN_GATEWAY_OK; "
-            "ping -c 2 -W 2 1.1.1.1; echo INTERNET_IP_OK; "
-            "resolvectl query opnsense.org >/dev/null 2>&1 && echo DNS_EXTERNAL_OK || echo DNS_EXTERNAL_FAIL; "
-            "curl -L -sS --connect-timeout 4 --max-time 10 -o /dev/null "
-            "-w 'HTTPS_EXTERNAL=%{http_code} EXIT=%{exitcode}\\n' https://example.com || true",
-        ),
-        expected=("LAN_GATEWAY_OK", "INTERNET_IP_OK"),
-        timeout=35,
-        accent="green",
-        steps=(
-            ("ping -c 2 192.168.10.1", "Alcança o gateway OPNsense dentro da LAN."),
-            ("ping -c 2 1.1.1.1", "Sai para a internet — só funciona com o NAT do OPNsense."),
-            ("resolvectl query opnsense.org", "Consulta DNS externo como informação complementar."),
-            ("curl https://example.com", "Tenta HTTPS externo como informação complementar; timeout aqui não reprova o NAT."),
-        ),
-        reads=(
-            ("LAN_GATEWAY_OK", "Chegou no gateway OPNsense."),
+            ("DNS_GOOGLE_OK", "DNS externo respondeu."),
             ("INTERNET_IP_OK", "Chegou na internet por IP, comprovando NAT de saída."),
-            ("DNS_EXTERNAL_OK", "DNS externo respondeu."),
-            ("HTTPS_EXTERNAL=200 EXIT=0", "HTTPS externo respondeu; se falhar, o resultado é apenas informativo."),
+            ("HTTPS_GOOGLE=200 EXIT=0", "HTTPS externo para o Google respondeu com sucesso."),
         ),
     ),
     Check(
-        id="wan-lan-block",
+        id="firewall-blocks",
         section="Firewall",
-        title="WAN -> LAN bloqueado",
-        summary="Prova que a WAN não acessa a LAN diretamente.",
-        explanation="A rota é forçada pelo OPNsense para demonstrar que o firewall bloqueia ping e HTTP direto ao cliente interno.",
-        success_label="Acesso direto bloqueado",
+        title="Bloqueios WAN",
+        summary="Prova que a WAN não acessa a LAN diretamente nem a porta 80.",
+        explanation="Força o caminho WAN→LAN pelo OPNsense e valida que o firewall bloqueia acesso direto à LAN e publicação livre na porta 80.",
+        success_label="Bloqueios de WAN validados",
         host="cliente-wan",
         build=lambda s: wan(
             s,
@@ -243,49 +232,30 @@ CHECKS: tuple[Check, ...] = (
             "ip route get 192.168.10.100; "
             "ping -c 2 -W 2 192.168.10.100 || true; "
             "curl -sS --max-time 5 -o /dev/null -w 'DIRECT_HTTP=%{http_code} EXIT=%{exitcode}\\n' http://192.168.10.100:8080/ || true; "
+            f"curl -sS --max-time 5 -o /dev/null -w 'WAN_80=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:80/ || true; "
             "sudo ip route del 192.168.10.0/24 2>/dev/null || true; "
             "sudo ip route replace 192.168.10.0/24 dev wg0 2>/dev/null || true",
         ),
-        expected=("100% packet loss", "DIRECT_HTTP=000 EXIT=28"),
-        timeout=30,
+        expected=("100% packet loss", "DIRECT_HTTP=000 EXIT=28", "WAN_80=000 EXIT=28"),
+        timeout=40,
         accent="red",
         steps=(
             ("sudo ip route replace 192.168.10.0/24 via 10.10.10.146", "Força a rota WAN→LAN passar pelo OPNsense (pior caso)."),
             ("ping -c 2 192.168.10.100", "Tenta pingar a LAN direto — deve dar 100% de perda."),
             ("curl http://192.168.10.100:8080/", "Tenta HTTP direto na LAN — deve dar timeout (bloqueado)."),
+            ("curl http://10.10.10.146:80/", "Bate na porta 80 da WAN do OPNsense — deve ficar fechada."),
             ("sudo ip route replace 192.168.10.0/24 dev wg0", "Restaura a rota original via túnel WireGuard."),
         ),
         reads=(
             ("100% packet loss", "O ping direto à LAN foi bloqueado pelo firewall."),
             ("DIRECT_HTTP=000 EXIT=28", "O HTTP direto deu timeout (bloqueado)."),
-        ),
-    ),
-    Check(
-        id="wan-80-block",
-        section="Firewall",
-        title="WAN porta 80 bloqueada",
-        summary="Confirma que não existe publicação livre na porta 80.",
-        explanation="A porta 80 da WAN deve permanecer sem resposta. A publicação controlada acontece apenas pela porta 8080.",
-        success_label="Porta 80 fechada",
-        host="cliente-wan",
-        build=lambda s: wan(
-            s,
-            f"curl -sS --max-time 5 -o /dev/null -w 'WAN_80=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:80/ || true",
-        ),
-        expected=("WAN_80=000 EXIT=28",),
-        timeout=15,
-        accent="red",
-        steps=(
-            ("curl http://10.10.10.146:80/", "Bate na porta 80 da WAN do OPNsense — espera timeout (fechada)."),
-        ),
-        reads=(
             ("WAN_80=000 EXIT=28", "Porta 80 sem resposta na WAN — publicação livre não existe."),
         ),
     ),
     Check(
         id="dnat-start",
         section="DNAT 8080",
-        title="Subir servidor web temporário",
+        title="Subir servidor web",
         summary="Prepara o serviço interno usado na demonstração de DNAT.",
         explanation="Inicia um HTTP simples no cliente LAN, escutando em 192.168.10.100:8080.",
         success_label="HTTP interno pronto",
@@ -312,14 +282,14 @@ CHECKS: tuple[Check, ...] = (
     Check(
         id="dnat-test",
         section="DNAT 8080",
-        title="Testar publicação web",
+        title="Validar publicação 8080",
         summary="Acessa a porta 8080 da WAN e espera chegar no serviço interno.",
         explanation="O OPNsense recebe em 10.10.10.146:8080 e redireciona para 192.168.10.100:8080.",
         success_label="DNAT retornou HTTP 200",
         host="cliente-wan",
         build=lambda s: wan(
             s,
-            f"curl -sS --max-time 5 -o /tmp/dnat-body -w 'DNAT_8080=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:8080/; "
+            f"curl -sS --max-time 7 -o /tmp/dnat-body -w 'DNAT_8080=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:8080/; "
             "sed -n '1,4p' /tmp/dnat-body",
         ),
         expected=("DNAT_8080=200 EXIT=0",),
@@ -330,13 +300,13 @@ CHECKS: tuple[Check, ...] = (
             ("sed -n 1,4p /tmp/dnat-body", "Mostra o começo da resposta que veio do cliente-lan interno."),
         ),
         reads=(
-            ("DNAT_8080=200 EXIT=0", "O acesso pela WAN chegou no serviço interno via DNAT."),
+            ("DNAT_8080=200 EXIT=0", "A publicação WAN chegou ao serviço interno."),
         ),
     ),
     Check(
         id="dnat-stop",
         section="DNAT 8080",
-        title="Parar servidor web temporário",
+        title="Parar servidor web",
         summary="Remove o processo HTTP usado apenas na demonstração.",
         explanation="Limpa o processo temporário para deixar o cliente LAN no estado normal.",
         success_label="HTTP temporário parado",
@@ -353,7 +323,7 @@ CHECKS: tuple[Check, ...] = (
             ("kill $(cat /tmp/opnsense-demo-http.pid)", "Encerra o servidor web temporário da demonstração."),
         ),
         reads=(
-            ("HTTP 8080 parado", "O processo temporário foi encerrado (lab volta ao normal)."),
+            ("HTTP 8080 parado", "O processo temporário foi encerrado."),
         ),
     ),
     Check(
@@ -546,11 +516,11 @@ def expected_tokens_ok(output: str, tokens: tuple[str, ...]) -> bool:
 
 
 def mode_hint(check: Check, output: str = "") -> str:
-    if check.id == "nat-out":
-        if "LAN_GATEWAY_OK" in output and "INTERNET_IP_OK" in output:
+    if check.id == "lan-internet":
+        if "LAN_GATEWAY_OK" in output and "INTERNET_IP_OK" in output and "HTTPS_GOOGLE=200 EXIT=0" not in output:
             return (
-                "O NAT por IP funcionou. A falha restante parece ser DNS/HTTPS externo "
-                "ou bloqueio/timeout do site testado; rode bash infra/diagnose-lab.sh se quiser detalhar."
+                "O NAT por IP funcionou, mas DNS ou HTTPS para www.google.com falhou. "
+                "Verifique DNS/HTTPS do OPNsense e rode bash infra/diagnose-lab.sh."
             )
         if "LAN_GATEWAY_OK" in output:
             return (
@@ -567,7 +537,23 @@ def mode_hint(check: Check, output: str = "") -> str:
             "O cliente WAN nao recebeu resposta do WireGuard. Verifique a WAN do OPNsense, "
             "o servico WireGuard e rode bash infra/diagnose-lab.sh."
         ),
-        "gateway-dhcp-dns": (
+        "firewall-blocks": (
+            "Algum bloqueio esperado nao aconteceu. Confira as regras WAN/LAN do OPNsense "
+            "e rode bash infra/diagnose-lab.sh."
+        ),
+        "dnat-start": (
+            "O servidor 8080 nao subiu no cliente LAN. Rode bash infra/provision-clients.sh "
+            "e confira se o cliente-lan responde por SSH."
+        ),
+        "dnat-test": (
+            "A publicacao 8080 nao completou. Confira se o cliente-lan esta em 192.168.10.100 "
+            "e se o DNAT WAN:8080 aponta para 192.168.10.100:8080."
+        ),
+        "dnat-stop": (
+            "Nao consegui confirmar a limpeza do servidor temporario. Verifique o cliente-lan "
+            "com ps aux | grep http.server."
+        ),
+        "lan-internet": (
             "Confira se o cliente-lan esta em 192.168.10.100 e usando 192.168.10.1 como gateway/DNS. "
             "Rode bash infra/provision-clients.sh."
         ),

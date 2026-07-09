@@ -6,6 +6,9 @@ Use este roteiro junto do dashboard em:
 http://localhost:8088
 ```
 
+O dashboard foi organizado em sete validações. Cada card executa comandos
+controlados por SSH nas VMs e mostra a evidência esperada na saída.
+
 ## 1. Status do Laboratório
 
 Objetivo:
@@ -18,60 +21,40 @@ Resultado esperado:
 - `cliente-lan (192.168.10.100): UP`
 - `cliente-wan (10.10.10.171): UP`
 
-## 2. Gateway, DHCP e DNS
+## 2. LAN, DNS, NAT e HTTPS
 
 Objetivo:
 
 - Confirmar IP do cliente LAN.
 - Confirmar gateway padrão `192.168.10.1`.
 - Confirmar DNS apontando para o OPNsense.
-- Resolver `opnsense.org`.
+- Resolver `www.google.com`.
+- Validar ping externo para `1.1.1.1`.
+- Validar HTTPS externo para `https://www.google.com`.
 
 Resultado esperado:
 
-- `cliente-lan` com `192.168.10.100`.
-- Rota padrão via `192.168.10.1`.
-- DNS da interface apontando para `192.168.10.1`.
+- `192.168.10.100`
+- `default via 192.168.10.1`
+- `DNS_GOOGLE_OK`
+- `LAN_GATEWAY_OK`
+- `INTERNET_IP_OK`
+- `HTTPS_GOOGLE=200 EXIT=0`
 
-## 3. NAT de Saída
-
-Objetivo:
-
-- Confirmar que a LAN acessa redes externas pelo OPNsense.
-- Confirmar alcance do gateway `192.168.10.1`.
-- Validar ping para `1.1.1.1`.
-- Registrar DNS/HTTPS externo como informação complementar.
-
-Resultado esperado:
-
-- Saída `LAN_GATEWAY_OK`.
-- Saída `INTERNET_IP_OK`.
-- `DNS_EXTERNAL_OK` e `HTTPS_EXTERNAL=200 EXIT=0` são úteis, mas não são o
-  critério principal do NAT. Um timeout de HTTPS externo pode depender do site,
-  da rede do host ou de filtragem fora do laboratório.
-
-## 4. Firewall: WAN Para LAN Bloqueado
+## 3. Bloqueios WAN
 
 Objetivo:
 
 - Confirmar que a WAN não acessa a LAN diretamente.
+- Confirmar que não existe publicação livre na porta `80` da WAN.
 
 Resultado esperado:
 
 - Ping direto para `192.168.10.100` com `100% packet loss`.
 - HTTP direto para `192.168.10.100:8080` com `DIRECT_HTTP=000 EXIT=28`.
+- Porta WAN `80` com `WAN_80=000 EXIT=28`.
 
-## 5. Firewall: WAN Porta 80 Bloqueada
-
-Objetivo:
-
-- Confirmar que não existe publicação livre na porta `80` da WAN.
-
-Resultado esperado:
-
-- `WAN_80=000 EXIT=28`.
-
-## 6. Subir Servidor Web Temporário
+## 4. Subir Servidor Web
 
 Objetivo:
 
@@ -80,9 +63,9 @@ Objetivo:
 
 Resultado esperado:
 
-- `LISTEN 8080 OK`.
+- `LISTEN 8080 OK`
 
-## 7. DNAT 8080
+## 5. Validar Publicação 8080
 
 Objetivo:
 
@@ -91,9 +74,9 @@ Objetivo:
 
 Resultado esperado:
 
-- `DNAT_8080=200 EXIT=0`.
+- `DNAT_8080=200 EXIT=0`
 
-## 8. Parar Servidor Web Temporário
+## 6. Parar Servidor Web
 
 Objetivo:
 
@@ -103,7 +86,7 @@ Resultado esperado:
 
 - `HTTP 8080 parado` ou `sem pidfile`.
 
-## 9. WireGuard
+## 7. WireGuard
 
 Objetivo:
 

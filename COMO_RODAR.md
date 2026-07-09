@@ -50,9 +50,10 @@ Abra:
 http://localhost:8088
 ```
 
-## Se os testes 3 e 9 falharem juntos
+## Se LAN/Internet e WireGuard falharem juntos
 
-Se o teste 3 falhar no ping para `1.1.1.1` e o teste 9 falhar no WireGuard:
+Se o card `LAN, DNS, NAT e HTTPS` falhar no ping para `1.1.1.1` e o card
+`VPN acessa a LAN` falhar no WireGuard:
 
 ```bash
 bash infra/diagnose-lab.sh
@@ -61,7 +62,7 @@ bash infra/provision-clients.sh
 docker compose restart dashboard
 ```
 
-Depois rode novamente os testes 3 e 9.
+Depois rode novamente esses dois cards.
 
 ## Comandos úteis
 

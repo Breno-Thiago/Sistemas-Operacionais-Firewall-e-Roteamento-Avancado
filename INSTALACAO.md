@@ -156,13 +156,12 @@ No dashboard, clique em `Rodar tudo`.
 Resultado esperado:
 
 - as três VMs respondem;
-- Gateway/DHCP/DNS validado;
-- NAT de saída validado;
-- acesso WAN direto para LAN bloqueado;
-- porta WAN `80` bloqueada;
+- LAN, DNS, NAT e HTTPS para `www.google.com` validados;
+- acesso WAN direto para LAN e porta WAN `80` bloqueados;
+- servidor HTTP temporário sobe no cliente LAN;
 - DNAT `8080` retorna HTTP `200`;
-- WireGuard acessa gateway e LAN;
-- servidor HTTP temporário é encerrado.
+- servidor HTTP temporário é encerrado;
+- WireGuard acessa gateway e LAN.
 
 ## 8. Rodar Dashboard Sem Container
 

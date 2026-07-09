@@ -113,14 +113,14 @@ q35
 Esses aliases são mais portáveis entre hosts Linux com versões diferentes de
 QEMU/libvirt.
 
-## Testes 3 e 9 falham juntos
+## LAN/Internet e WireGuard falham juntos
 
 Sintomas:
 
 ```text
-Teste 3: ping 192.168.10.1 funciona, mas ping 1.1.1.1 falha
-Teste 3: curl: Could not resolve host: opnsense.org
-Teste 9: WireGuard mostra 0 B received e ping 10.99.0.1 falha
+Card LAN, DNS, NAT e HTTPS: ping 192.168.10.1 funciona, mas ping 1.1.1.1 falha
+Card LAN, DNS, NAT e HTTPS: curl ou DNS externo falha
+Card VPN acessa a LAN: WireGuard mostra 0 B received e ping 10.99.0.1 falha
 ```
 
 Isso normalmente significa que a LAN chega no OPNsense, mas a WAN do OPNsense
@@ -152,7 +152,7 @@ bash infra/provision-clients.sh
 docker compose restart dashboard
 ```
 
-Depois rode os testes 3 e 9 novamente.
+Depois rode os cards `LAN, DNS, NAT e HTTPS` e `VPN acessa a LAN` novamente.
 
 Se o diagnóstico mostrar que `cliente-wan` pinga `10.10.10.1`, mas não pinga
 `1.1.1.1`, corrija a NAT/firewall do host:
@@ -167,24 +167,23 @@ O script detecta a interface real de saída do host, habilita `ip_forward`,
 ajusta `firewalld` e cria uma regra explícita em `nftables` para mascarar a rede
 `10.10.10.0/24` da WAN do laboratório.
 
-## Teste 3: ping externo funciona, mas HTTPS dá timeout
+## LAN/Internet: ping externo funciona, mas HTTPS falha
 
 Sintoma:
 
 ```text
 PING 1.1.1.1 ... 0% packet loss
-HTTPS_OPNSENSE=000 EXIT=28
+HTTPS_GOOGLE=000 EXIT=28
 curl: (28) Connection timed out
 ```
 
 Nesse caso, o NAT por IP funcionou. O cliente LAN chegou ao gateway
 `192.168.10.1` e também saiu para a internet em `1.1.1.1`.
 
-O problema é a dependência de um site HTTPS externo específico, que pode falhar
-por timeout, filtragem da rede, DNS intermitente ou indisponibilidade do destino.
-A versão atual do dashboard não reprova o teste 3 por esse motivo: ela exige
-`LAN_GATEWAY_OK` e `INTERNET_IP_OK`; DNS e HTTPS externo ficam apenas como
-informação complementar.
+O dashboard também valida DNS e HTTPS real para `https://www.google.com`. Se o
+ping externo funciona, mas `HTTPS_GOOGLE=200 EXIT=0` não aparece, o problema já
+não é NAT básico: verifique DNS, regra de saída HTTPS no OPNsense, horário da VM,
+certificados e possíveis filtros da rede do host.
 
 Depois de atualizar o repositório, reinicie o dashboard:
 

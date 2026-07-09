@@ -121,19 +121,18 @@ O guia curto está em [COMO_RODAR.md](COMO_RODAR.md). O guia completo está em
 
 ## Validações do Dashboard
 
-O dashboard executa testes fixos, sem terminal livre, para reduzir erro durante
-a apresentação.
+O dashboard executa sete validações fixas, sem terminal livre, para reduzir erro
+durante a apresentação.
 
 Ele valida:
 
 - status das três VMs;
-- gateway, DHCP e DNS da LAN;
-- NAT de saída da LAN;
-- bloqueio de acesso direto da WAN para a LAN;
-- bloqueio da porta WAN `80`;
+- LAN, DNS, NAT de saída e HTTPS externo para `www.google.com`;
+- bloqueio de acesso direto da WAN para a LAN e da porta WAN `80`;
+- subida do servidor HTTP temporário no cliente LAN;
 - publicação controlada com DNAT na porta `8080`;
-- WireGuard e acesso à LAN via VPN;
-- limpeza do servidor HTTP temporário.
+- limpeza do servidor HTTP temporário;
+- WireGuard e acesso à LAN via VPN.
 
 Detalhes do roteiro estão em [docs/roteiro-validacao.md](docs/roteiro-validacao.md).
 
