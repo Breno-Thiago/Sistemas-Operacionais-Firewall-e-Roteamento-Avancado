@@ -13,7 +13,7 @@ python3 -m venv .venv 2>/dev/null || true
 .venv/bin/pip install -q -r requirements.txt
 
 export LAB_MODE=local
-export SSH_KEY_PATH="$HOME/.ssh/ufs_so_lab_do"
+export SSH_KEY_PATH="${SSH_KEY_PATH:-$ROOT/local/ssh/lab_ed25519}"
 export OPNSENSE_USER="${OPNSENSE_USER:-root}"
 export OPNSENSE_PASS="${OPNSENSE_PASS:-opnsense}"
 export COCKPIT_USER="${COCKPIT_USER:-$USER}"

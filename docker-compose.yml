@@ -17,8 +17,8 @@ services:
       OPNSENSE_USER: ${OPNSENSE_USER:-root}
       OPNSENSE_PASS: ${OPNSENSE_PASS:-opnsense}
       COCKPIT_USER: ${COCKPIT_USER:-}
-      SSH_KEY_PATH: ${SSH_KEY_PATH:-/home/app/.ssh/ufs_so_lab_do}
+      SSH_KEY_PATH: ${SSH_KEY_PATH:-/home/app/.ssh/lab_ed25519}
       SSH_EXTRA_OPTS: ${SSH_EXTRA_OPTS:-}
     volumes:
-      - ~/.ssh:/home/app/.ssh:ro
+      - ./local/ssh:/home/app/.ssh:ro
     restart: unless-stopped

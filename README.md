@@ -58,6 +58,9 @@ Depois coloque as imagens em `local/vm-images/` e rode:
 bash infra/setup-all.sh
 ```
 
+O setup gera a chave SSH local do laboratório em `local/ssh/lab_ed25519` e a
+instala nos clientes. Não é necessário receber uma chave pessoal externa.
+
 Acesse:
 
 ```text

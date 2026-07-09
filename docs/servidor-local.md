@@ -80,15 +80,16 @@ O `provision-clients.sh`:
   faça SSH direto em `lab@192.168.10.100`.
 - O dashboard usa `network_mode: host`, então ele enxerga as redes libvirt do
   próprio notebook.
-- A chave esperada é `~/.ssh/ufs_so_lab_do`, com permissão `600`.
+- A chave local do dashboard é gerada em `local/ssh/lab_ed25519` e instalada
+  nos clientes pelo `infra/provision-clients.sh`.
 
 ## Validação Manual
 
 ```bash
 virsh -c qemu:///system list --all
 virsh -c qemu:///system net-list --all
-ssh -i ~/.ssh/ufs_so_lab_do lab@192.168.10.100 hostname
-ssh -i ~/.ssh/ufs_so_lab_do lab@10.10.10.171 'sudo wg show'
+ssh -i local/ssh/lab_ed25519 lab@192.168.10.100 hostname
+ssh -i local/ssh/lab_ed25519 lab@10.10.10.171 'sudo wg show'
 ```
 
 Depois abra:

@@ -79,4 +79,4 @@ done
 echo "== 5. estado final =="
 $VIRSH list --all
 $VIRSH net-list --all
-echo "OK. Aguarde ~40s o boot e valide: ssh -i ~/.ssh/ufs_so_lab_do lab@192.168.10.100 hostname"
+echo "OK. Aguarde ~40s o boot e rode: bash infra/provision-clients.sh"

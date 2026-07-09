@@ -29,7 +29,7 @@ class Settings(BaseModel):
     wg_opnsense: str = os.getenv("WG_OPNSENSE", "10.99.0.1")
     wg_client: str = os.getenv("WG_CLIENT", "10.99.0.2")
     ssh_user: str = os.getenv("SSH_USER", "lab")
-    ssh_key_path: str = os.getenv("SSH_KEY_PATH", "/home/app/.ssh/ufs_so_lab_do")
+    ssh_key_path: str = os.getenv("SSH_KEY_PATH", "/home/app/.ssh/lab_ed25519")
     ssh_extra_opts: str = os.getenv("SSH_EXTRA_OPTS", "")
     opnsense_user: str = os.getenv("OPNSENSE_USER", "root")
     opnsense_pass: str = os.getenv("OPNSENSE_PASS", "opnsense")
@@ -90,7 +90,7 @@ def _ssh_base(s: Settings, use_lab_key: bool = True) -> list[str]:
         "-o",
         "ConnectTimeout=8",
     ]
-    if use_lab_key:
+    if use_lab_key and s.ssh_key_path:
         cmd.extend(["-i", s.ssh_key_path])
     if s.ssh_extra_opts:
         cmd.extend(shlex.split(s.ssh_extra_opts))
@@ -540,7 +540,7 @@ def expected_tokens_ok(output: str, tokens: tuple[str, ...]) -> bool:
 
 
 def mode_hint(s: Settings) -> str:
-    return "As VMs precisam estar rodando no KVM/libvirt local e a chave ~/.ssh/ufs_so_lab_do precisa existir com permissão 600."
+    return "As VMs precisam estar rodando no KVM/libvirt local. Rode bash infra/provision-clients.sh para gerar e instalar a chave local do lab."
 
 
 def tcp_reachable(host: str, port: int, timeout: float) -> bool:

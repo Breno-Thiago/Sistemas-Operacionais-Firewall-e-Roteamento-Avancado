@@ -85,8 +85,9 @@ cp ~/Downloads/cliente-lan.iso local/vm-images/
 cp ~/Downloads/cliente-wan.iso local/vm-images/
 ```
 
-O dashboard usa a chave SSH já configurada na máquina de apresentação. Essa
-chave não faz parte do pacote do Drive.
+O setup gera uma chave SSH local automaticamente em `local/ssh/lab_ed25519` e
+instala a chave pública nos clientes do laboratório. Essa chave fica fora do Git
+e não precisa ser enviada junto com o pacote do Drive.
 
 ## 5. Subir Tudo
 
@@ -101,7 +102,8 @@ Esse comando faz:
 3. cria as redes `wan-lab` e `lan-lab`;
 4. define e inicia `opnsense-fw`, `cliente-lan` e `cliente-wan`;
 5. ajusta IP fixo do `cliente-lan` e WireGuard do `cliente-wan`;
-6. sobe o dashboard.
+6. gera/instala a chave SSH local do laboratório;
+7. sobe o dashboard.
 
 ## 6. Acessar
 
@@ -186,8 +188,8 @@ docker-compose up -d --build
 Testar SSH:
 
 ```bash
-ssh -i ~/.ssh/ufs_so_lab_do lab@192.168.10.100 hostname
-ssh -i ~/.ssh/ufs_so_lab_do lab@10.10.10.171 hostname
+ssh -i local/ssh/lab_ed25519 lab@192.168.10.100 hostname
+ssh -i local/ssh/lab_ed25519 lab@10.10.10.171 hostname
 ```
 
 ## 10. Limpar Tudo
