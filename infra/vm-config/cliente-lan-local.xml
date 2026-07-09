@@ -13,7 +13,7 @@
     <partition>/machine</partition>
   </resource>
   <os>
-    <type arch='x86_64' machine='pc-q35-noble'>hvm</type>
+    <type arch='x86_64' machine='q35'>hvm</type>
     <boot dev='hd'/>
   </os>
   <features>
@@ -201,12 +201,4 @@
       <address type='pci' domain='0x0000' bus='0x06' slot='0x00' function='0x0'/>
     </rng>
   </devices>
-  <seclabel type='dynamic' model='apparmor' relabel='yes'>
-    <label>libvirt-635e98d4-6ec5-49fa-b43c-e06ab06dbdb6</label>
-    <imagelabel>libvirt-635e98d4-6ec5-49fa-b43c-e06ab06dbdb6</imagelabel>
-  </seclabel>
-  <seclabel type='dynamic' model='dac' relabel='yes'>
-    <label>+64055:+993</label>
-    <imagelabel>+64055:+993</imagelabel>
-  </seclabel>
 </domain>

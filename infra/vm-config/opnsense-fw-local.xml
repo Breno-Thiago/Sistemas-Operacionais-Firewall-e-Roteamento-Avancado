@@ -8,7 +8,7 @@
     <partition>/machine</partition>
   </resource>
   <os>
-    <type arch='x86_64' machine='pc-i440fx-noble-v2'>hvm</type>
+    <type arch='x86_64' machine='pc'>hvm</type>
     <boot dev='cdrom'/>
     <boot dev='hd'/>
     <bootmenu enable='yes'/>
@@ -118,12 +118,4 @@
       <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
     </memballoon>
   </devices>
-  <seclabel type='dynamic' model='apparmor' relabel='yes'>
-    <label>libvirt-c265c677-7bba-4280-8d0a-a7071902a067</label>
-    <imagelabel>libvirt-c265c677-7bba-4280-8d0a-a7071902a067</imagelabel>
-  </seclabel>
-  <seclabel type='dynamic' model='dac' relabel='yes'>
-    <label>+64055:+993</label>
-    <imagelabel>+64055:+993</imagelabel>
-  </seclabel>
 </domain>

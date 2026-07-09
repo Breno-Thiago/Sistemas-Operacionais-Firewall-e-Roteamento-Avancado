@@ -34,6 +34,14 @@ else
   bad "docker compose ou docker-compose"
 fi
 
+if command -v runc >/dev/null 2>&1; then
+  ok "runtime OCI runc ($(command -v runc))"
+elif command -v crun >/dev/null 2>&1; then
+  ok "runtime OCI crun ($(command -v crun))"
+else
+  bad "runtime OCI runc ou crun. No Fedora, tente: sudo dnf install -y runc"
+fi
+
 echo
 echo "== virtualizacao e grupos =="
 if [ -e /dev/kvm ]; then

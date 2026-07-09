@@ -66,6 +66,49 @@ docker ps
 
 ou faça logout/login.
 
+## Docker reclamando de runc
+
+Erro comum no Fedora:
+
+```text
+exec: "runc": executable file not found
+```
+
+O Docker está instalado, mas falta o runtime OCI usado para iniciar containers.
+
+Corrija:
+
+```bash
+sudo dnf install -y runc
+sudo systemctl restart docker
+docker ps
+```
+
+Depois rode:
+
+```bash
+bash infra/check-host.sh
+bash infra/setup-all.sh
+```
+
+## Machine type do QEMU não suportado
+
+Erro:
+
+```text
+Emulador '/usr/bin/qemu-system-x86_64' não suporta o tipo de máquina 'pc-i440fx-noble-v2'
+```
+
+Isso acontecia porque os XMLs das VMs tinham machine types específicos do
+Ubuntu 24.04 (`noble`). O projeto agora usa aliases genéricos do QEMU:
+
+```text
+pc
+q35
+```
+
+Esses aliases funcionam melhor entre Ubuntu, Fedora, Arch e openSUSE.
+
 ## Docker build travando em apt-get update
 
 Sintoma:
