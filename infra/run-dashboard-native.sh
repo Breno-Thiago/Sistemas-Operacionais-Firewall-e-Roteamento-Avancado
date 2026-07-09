@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Roda o dashboard SEM Docker (util em distros onde o Docker da trabalho).
+# Roda o dashboard sem Docker, util quando o container nao esta disponivel.
 # Usa um venv Python e o uvicorn direto no host. Nao precisa de sudo.
 #
 #   bash infra/run-dashboard-native.sh            # primeiro plano (Ctrl+C para parar)

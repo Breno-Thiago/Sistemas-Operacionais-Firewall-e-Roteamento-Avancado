@@ -206,21 +206,27 @@ CHECKS: tuple[Check, ...] = (
         host="cliente-lan",
         build=lambda s: lan(
             s,
-            "ping -c 2 -W 2 192.168.10.1; "
-            "ping -c 2 -W 2 1.1.1.1; "
-            "curl -sS --max-time 8 -o /dev/null -w 'HTTPS_OPNSENSE=%{http_code} EXIT=%{exitcode}\\n' https://opnsense.org",
+            "set -e; "
+            "ping -c 2 -W 2 192.168.10.1; echo LAN_GATEWAY_OK; "
+            "ping -c 2 -W 2 1.1.1.1; echo INTERNET_IP_OK; "
+            "resolvectl query opnsense.org >/dev/null 2>&1 && echo DNS_EXTERNAL_OK || echo DNS_EXTERNAL_FAIL; "
+            "curl -L -sS --connect-timeout 4 --max-time 10 -o /dev/null "
+            "-w 'HTTPS_EXTERNAL=%{http_code} EXIT=%{exitcode}\\n' https://example.com || true",
         ),
-        expected=("0% packet loss", "HTTPS_OPNSENSE=200 EXIT=0"),
+        expected=("LAN_GATEWAY_OK", "INTERNET_IP_OK"),
         timeout=35,
         accent="green",
         steps=(
             ("ping -c 2 192.168.10.1", "Alcança o gateway OPNsense dentro da LAN."),
             ("ping -c 2 1.1.1.1", "Sai para a internet — só funciona com o NAT do OPNsense."),
-            ("curl https://opnsense.org", "Baixa HTTPS externo; espera HTTP 200 (NAT ok)."),
+            ("resolvectl query opnsense.org", "Consulta DNS externo como informação complementar."),
+            ("curl https://example.com", "Tenta HTTPS externo como informação complementar; timeout aqui não reprova o NAT."),
         ),
         reads=(
-            ("0% packet loss", "Chegou no gateway e na internet (1.1.1.1)."),
-            ("HTTPS_OPNSENSE=200 EXIT=0", "HTTPS externo funcionou saindo pelo NAT."),
+            ("LAN_GATEWAY_OK", "Chegou no gateway OPNsense."),
+            ("INTERNET_IP_OK", "Chegou na internet por IP, comprovando NAT de saída."),
+            ("DNS_EXTERNAL_OK", "DNS externo respondeu."),
+            ("HTTPS_EXTERNAL=200 EXIT=0", "HTTPS externo respondeu; se falhar, o resultado é apenas informativo."),
         ),
     ),
     Check(
@@ -508,7 +514,7 @@ def run_check(check_id: str, mode: str | None = Query(default=None)) -> RunResul
             returncode=124,
             ok=False,
             summary="Tempo limite atingido.",
-            hint=mode_hint(check),
+            hint=mode_hint(check, f"{exc.stdout or ''}\n{exc.stderr or ''}"),
         )
 
     combined = f"{completed.stdout}\n{completed.stderr}"
@@ -526,7 +532,7 @@ def run_check(check_id: str, mode: str | None = Query(default=None)) -> RunResul
         returncode=completed.returncode,
         ok=ok,
         summary=check.success_label if ok else "Validação falhou ou retornou saída inesperada.",
-        hint="" if ok else mode_hint(check),
+        hint="" if ok else mode_hint(check, combined),
     )
 
 
@@ -539,12 +545,24 @@ def expected_tokens_ok(output: str, tokens: tuple[str, ...]) -> bool:
     return all(token in output for token in tokens)
 
 
-def mode_hint(check: Check) -> str:
+def mode_hint(check: Check, output: str = "") -> str:
+    if check.id == "nat-out":
+        if "LAN_GATEWAY_OK" in output and "INTERNET_IP_OK" in output:
+            return (
+                "O NAT por IP funcionou. A falha restante parece ser DNS/HTTPS externo "
+                "ou bloqueio/timeout do site testado; rode bash infra/diagnose-lab.sh se quiser detalhar."
+            )
+        if "LAN_GATEWAY_OK" in output:
+            return (
+                "O cliente LAN chegou no OPNsense, mas nao chegou em 1.1.1.1. "
+                "Verifique WAN/NAT do OPNsense e rode bash infra/diagnose-lab.sh."
+            )
+        return (
+            "O cliente LAN nao chegou no gateway OPNsense. Verifique a interface LAN, "
+            "o IP 192.168.10.1 e rode bash infra/provision-clients.sh."
+        )
+
     hints = {
-        "nat-out": (
-            "O cliente LAN chegou no OPNsense, mas nao saiu para a internet. "
-            "Verifique WAN/NAT/DNS do OPNsense e rode bash infra/diagnose-lab.sh."
-        ),
         "wireguard": (
             "O cliente WAN nao recebeu resposta do WireGuard. Verifique a WAN do OPNsense, "
             "o servico WireGuard e rode bash infra/diagnose-lab.sh."

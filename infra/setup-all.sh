@@ -29,7 +29,7 @@ compose_up() {
 Isso acontece quando o usuario acabou de entrar no grupo docker e ainda nao fez
 logout/login. Resolva com uma destas opcoes:
 
-  1. fechar a sessao e entrar de novo; depois rode bash infra/setup-all.sh
+  1. fechar a sessao e entrar de novo; depois rode bash infra/setup.sh
   2. rodar: newgrp docker
   3. se precisar continuar sem Docker: bash infra/run-dashboard-native.sh
 
@@ -43,7 +43,7 @@ if [ "${LAB_SKIP_HOST_CHECK:-0}" != "1" ]; then
   echo "== 0/5 diagnostico rapido do host =="
   if ! bash infra/check-host.sh; then
     echo
-    echo "Corrija os itens acima e rode novamente: bash infra/setup-all.sh" >&2
+    echo "Corrija os itens acima e rode novamente: bash infra/setup.sh" >&2
     exit 1
   fi
 else
@@ -77,7 +77,8 @@ if ! ssh -i "$ROOT/local/ssh/lab_ed25519" \
   lab@10.10.10.171 'ping -c 1 -W 2 1.1.1.1' >/dev/null 2>&1; then
   cat <<MSG
 AVISO: cliente-wan ainda nao conseguiu sair para a internet.
-Se voce estiver no Fedora/firewalld, rode:
+Isso normalmente indica bloqueio de encaminhamento/NAT no firewall do host.
+Rode:
 
   sudo bash infra/fix-libvirt-nat.sh
   bash infra/provision-clients.sh

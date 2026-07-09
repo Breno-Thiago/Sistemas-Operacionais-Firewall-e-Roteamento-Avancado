@@ -38,13 +38,17 @@ Resultado esperado:
 Objetivo:
 
 - Confirmar que a LAN acessa redes externas pelo OPNsense.
+- Confirmar alcance do gateway `192.168.10.1`.
 - Validar ping para `1.1.1.1`.
-- Validar HTTPS para `opnsense.org`.
+- Registrar DNS/HTTPS externo como informação complementar.
 
 Resultado esperado:
 
-- Ping externo com `0% packet loss`.
-- HTTPS retornando `HTTPS_OPNSENSE=200 EXIT=0`.
+- Saída `LAN_GATEWAY_OK`.
+- Saída `INTERNET_IP_OK`.
+- `DNS_EXTERNAL_OK` e `HTTPS_EXTERNAL=200 EXIT=0` são úteis, mas não são o
+  critério principal do NAT. Um timeout de HTTPS externo pode depender do site,
+  da rede do host ou de filtragem fora do laboratório.
 
 ## 4. Firewall: WAN Para LAN Bloqueado
 

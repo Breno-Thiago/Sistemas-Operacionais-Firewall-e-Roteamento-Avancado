@@ -32,7 +32,7 @@ No computador de quem for rodar:
    local/vm-images/
 
 2. Suba o laboratorio:
-   bash infra/setup-all.sh
+   bash infra/setup.sh
 
 3. Abra o dashboard:
    http://localhost:8088

@@ -14,8 +14,10 @@ Use uma máquina Linux com:
 - internet para instalar pacotes;
 - arquivos das VMs baixados do Drive.
 
-O laboratório foi testado no Ubuntu. O script de pré-requisitos também cobre
-Debian/Mint, Fedora, Arch/Manjaro e openSUSE.
+O script de pré-requisitos não depende do nome da distribuição. Ele detecta o
+gerenciador de pacotes disponível (`apt`, `dnf`, `pacman` ou `zypper`) e instala
+os pacotes equivalentes. Em sistemas fora desse conjunto, instale manualmente os
+mesmos componentes listados abaixo e rode `bash infra/check-host.sh`.
 
 ## 2. Baixar o Repositório
 
@@ -34,7 +36,7 @@ Rode uma vez:
 sudo bash infra/install-prereqs.sh
 ```
 
-O script detecta a distro e instala os equivalentes de:
+O script detecta o gerenciador de pacotes e instala os equivalentes de:
 
 - KVM/QEMU/libvirt;
 - `virt-install`, `qemu-img` e ferramentas de rede;
@@ -162,9 +164,9 @@ Resultado esperado:
 - WireGuard acessa gateway e LAN;
 - servidor HTTP temporário é encerrado.
 
-## 8. Rodar Dashboard Sem Docker
+## 8. Rodar Dashboard Sem Container
 
-Se o Docker ou Compose der problema na sua distro:
+Se Docker ou Compose não estiverem disponíveis no host:
 
 ```bash
 bash infra/run-dashboard-native.sh
@@ -229,6 +231,8 @@ Veja [docs/solucao-problemas.md](docs/solucao-problemas.md) para:
 
 - Docker sem permissão em `/var/run/docker.sock`;
 - sessão que ainda não pegou os grupos `docker`, `kvm` e `libvirt`;
+- runtime OCI ausente (`runc`/`crun`);
+- NAT/firewall do host bloqueando a rede `wan-lab`;
 - build Docker travando em `apt-get update`;
 - Cockpit com caminho relativo errado;
 - imagens baixadas com nomes diferentes;

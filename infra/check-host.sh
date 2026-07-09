@@ -39,7 +39,7 @@ if command -v runc >/dev/null 2>&1; then
 elif command -v crun >/dev/null 2>&1; then
   ok "runtime OCI crun ($(command -v crun))"
 else
-  bad "runtime OCI runc ou crun. No Fedora, tente: sudo dnf install -y runc"
+  bad "runtime OCI runc ou crun. Instale o pacote runc ou crun da sua distribuicao."
 fi
 
 echo
@@ -103,7 +103,7 @@ fi
 
 echo
 if [ "$fail" -eq 0 ]; then
-  echo "Diagnostico concluido: host pronto para bash infra/setup-all.sh."
+  echo "Diagnostico concluido: host pronto para bash infra/setup.sh."
 else
   echo "Diagnostico concluiu com pendencias. Corrija os itens FALTA antes do setup."
 fi

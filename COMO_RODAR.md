@@ -1,6 +1,6 @@
 # Como Rodar o Laboratório
 
-Este é o caminho curto para quem recebeu o repositório e os arquivos das VMs.
+Guia curto para executar o laboratório em uma máquina Linux com virtualização.
 
 ## 1. Instalar dependências
 
@@ -8,7 +8,8 @@ Este é o caminho curto para quem recebeu o repositório e os arquivos das VMs.
 sudo bash infra/install-prereqs.sh
 ```
 
-Depois faça logout/login para os grupos `libvirt`, `kvm` e `docker` valerem.
+Depois faça logout/login para os grupos `libvirt`, `kvm` e `docker` valerem na
+sessão do usuário.
 
 ## 2. Colocar as imagens
 
@@ -49,7 +50,7 @@ Abra:
 http://localhost:8088
 ```
 
-## Fedora: testes 3 e 9 falhando
+## Se os testes 3 e 9 falharem juntos
 
 Se o teste 3 falhar no ping para `1.1.1.1` e o teste 9 falhar no WireGuard:
 

@@ -43,8 +43,8 @@ bash infra/run-dashboard-native.sh
 
 ## Docker daemon desligado
 
-No Fedora e em algumas instalações novas, o usuário pode estar no grupo
-`docker`, mas o serviço ainda não estar ativo. O diagnóstico mostra algo como:
+Em algumas instalações, o usuário pode estar no grupo `docker`, mas o serviço
+ainda não estar ativo. O diagnóstico mostra algo como:
 
 ```text
 Docker daemon esta instalado, mas nao esta rodando.
@@ -66,20 +66,23 @@ docker ps
 
 ou faça logout/login.
 
-## Docker reclamando de runc
+## Docker reclamando de runtime OCI
 
-Erro comum no Fedora:
+Erro comum quando o Docker foi instalado sem runtime OCI:
 
 ```text
 exec: "runc": executable file not found
 ```
 
-O Docker está instalado, mas falta o runtime OCI usado para iniciar containers.
+O Docker está instalado, mas falta o runtime usado para iniciar containers.
 
-Corrija:
+Corrija com o gerenciador de pacotes do seu sistema:
 
 ```bash
+sudo apt install -y runc
 sudo dnf install -y runc
+sudo pacman -S --needed runc
+sudo zypper install -y runc
 sudo systemctl restart docker
 docker ps
 ```
@@ -88,7 +91,7 @@ Depois rode:
 
 ```bash
 bash infra/check-host.sh
-bash infra/setup-all.sh
+bash infra/setup.sh
 ```
 
 ## Machine type do QEMU não suportado
@@ -99,15 +102,16 @@ Erro:
 Emulador '/usr/bin/qemu-system-x86_64' não suporta o tipo de máquina 'pc-i440fx-noble-v2'
 ```
 
-Isso acontecia porque os XMLs das VMs tinham machine types específicos do
-Ubuntu 24.04 (`noble`). O projeto agora usa aliases genéricos do QEMU:
+Isso acontecia porque os XMLs das VMs tinham machine types específicos de uma
+versão de QEMU/libvirt. O projeto agora usa aliases genéricos do QEMU:
 
 ```text
 pc
 q35
 ```
 
-Esses aliases funcionam melhor entre Ubuntu, Fedora, Arch e openSUSE.
+Esses aliases são mais portáveis entre hosts Linux com versões diferentes de
+QEMU/libvirt.
 
 ## Testes 3 e 9 falham juntos
 
@@ -131,7 +135,7 @@ bash infra/diagnose-lab.sh
 Leitura rápida:
 
 - Se `cliente-wan` não pinga `1.1.1.1`, o problema está na rede NAT `wan-lab`
-  do libvirt/Fedora.
+  do libvirt ou no firewall do host.
 - Se `cliente-wan` pinga `1.1.1.1`, mas não pinga `10.10.10.146`, o OPNsense
   não está respondendo pela WAN esperada.
 - Se `cliente-wan` pinga `10.10.10.146`, mas WireGuard não tem handshake, o
@@ -150,8 +154,8 @@ docker compose restart dashboard
 
 Depois rode os testes 3 e 9 novamente.
 
-No Fedora, se o diagnóstico mostrar que `cliente-wan` pinga `10.10.10.1`, mas
-não pinga `1.1.1.1`, corrija a NAT do host:
+Se o diagnóstico mostrar que `cliente-wan` pinga `10.10.10.1`, mas não pinga
+`1.1.1.1`, corrija a NAT/firewall do host:
 
 ```bash
 sudo bash infra/fix-libvirt-nat.sh
@@ -162,6 +166,38 @@ docker compose restart dashboard
 O script detecta a interface real de saída do host, habilita `ip_forward`,
 ajusta `firewalld` e cria uma regra explícita em `nftables` para mascarar a rede
 `10.10.10.0/24` da WAN do laboratório.
+
+## Teste 3: ping externo funciona, mas HTTPS dá timeout
+
+Sintoma:
+
+```text
+PING 1.1.1.1 ... 0% packet loss
+HTTPS_OPNSENSE=000 EXIT=28
+curl: (28) Connection timed out
+```
+
+Nesse caso, o NAT por IP funcionou. O cliente LAN chegou ao gateway
+`192.168.10.1` e também saiu para a internet em `1.1.1.1`.
+
+O problema é a dependência de um site HTTPS externo específico, que pode falhar
+por timeout, filtragem da rede, DNS intermitente ou indisponibilidade do destino.
+A versão atual do dashboard não reprova o teste 3 por esse motivo: ela exige
+`LAN_GATEWAY_OK` e `INTERNET_IP_OK`; DNS e HTTPS externo ficam apenas como
+informação complementar.
+
+Depois de atualizar o repositório, reinicie o dashboard:
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Se estiver usando modo nativo:
+
+```bash
+bash infra/run-dashboard-native.sh
+```
 
 ## Docker build travando em apt-get update
 
@@ -249,9 +285,9 @@ Warning: Identity file /home/app/.ssh/lab_ed25519 not accessible: Permission den
 lab@10.10.10.171: Permission denied (publickey,password).
 ```
 
-No Fedora, isso costuma ser SELinux bloqueando o bind mount da pasta
-`local/ssh` dentro do container. O `docker-compose.yml` já monta a pasta com
-label SELinux:
+Isso costuma acontecer quando o mecanismo de segurança do host bloqueia o bind
+mount da pasta `local/ssh` dentro do container. O `docker-compose.yml` já monta
+a pasta com label compatível com SELinux:
 
 ```yaml
 ./local/ssh:/home/app/.ssh:ro,Z

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Corrige encaminhamento/NAT do host para a rede wan-lab.
-# Necessario em algumas instalacoes Fedora/firewalld onde a rede NAT criada
-# pelo libvirt sobe, mas as VMs nao conseguem sair para a internet.
+# Necessario quando a rede NAT criada pelo libvirt sobe, mas as VMs nao
+# conseguem sair para a internet por causa das regras de firewall do host.
 set -euo pipefail
 export LC_ALL=C
 
@@ -102,7 +102,7 @@ table inet opnsense_lab {
 }
 EOF
 else
-  echo "AVISO: nft nao encontrado. Mantendo apenas as regras do firewalld/libvirt." >&2
+  echo "AVISO: nft nao encontrado. Mantendo apenas as regras do firewall/libvirt." >&2
 fi
 
 cat <<'MSG'

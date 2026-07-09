@@ -69,10 +69,8 @@ check_vm_images() {
   return "$missing"
 }
 
-host_needs_fedora_nat_fix() {
-  local os_id
-  os_id="$(detect_os_id)"
-  [ "$os_id" = "fedora" ] && command -v firewall-cmd >/dev/null 2>&1
+host_has_managed_firewall() {
+  command -v firewall-cmd >/dev/null 2>&1 || command -v nft >/dev/null 2>&1
 }
 
 ssh_lab_base() {

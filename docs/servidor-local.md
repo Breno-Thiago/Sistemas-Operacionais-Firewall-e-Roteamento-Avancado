@@ -34,7 +34,8 @@ OPNsense.
 | `infra/vm-config/cliente-lan-netplan-99-lab-static.yaml` | referência do netplan aplicado no cliente LAN |
 | `infra/import-local.sh` | importa discos, redes e VMs |
 | `infra/provision-clients.sh` | ajusta IP fixo da LAN e WireGuard |
-| `infra/setup-all.sh` | executa o fluxo completo |
+| `infra/setup.sh` | entrada principal para executar o fluxo completo |
+| `infra/setup-all.sh` | motor interno chamado pelo `setup.sh` |
 
 ## Arquivos Não Versionados
 

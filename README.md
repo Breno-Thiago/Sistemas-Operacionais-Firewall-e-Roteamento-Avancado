@@ -1,134 +1,172 @@
 # Firewall e Roteamento Avançado com OPNsense
 
-Laboratório de Sistemas Operacionais para demonstrar firewall, roteamento, NAT,
-DNAT, serviços de LAN e VPN segura com WireGuard.
+Laboratório acadêmico de Sistemas Operacionais para demonstrar, em ambiente
+local e reproduzível, conceitos de firewall, roteamento, NAT, DNAT, serviços de
+LAN e VPN com WireGuard usando OPNsense.
 
-O projeto roda localmente em Linux usando KVM/libvirt para as VMs e um dashboard
-web para executar as validações da apresentação.
+O projeto usa KVM/libvirt para executar três máquinas virtuais e um dashboard
+web em FastAPI para validar a topologia durante a apresentação.
 
-## O Que Tem Aqui
+![Topologia do laboratório](assets/images/topologia-laboratorio-completa.png)
 
-- `app/`: dashboard web de validação, feito com FastAPI.
-- `infra/`: scripts para instalar dependências, importar VMs e subir o lab.
-- `infra/vm-config/`: XMLs das redes e das três VMs no libvirt.
-- `docs/`: topologia, roteiro de validação e detalhes técnicos.
-- `assets/`: imagens finais usadas nos slides e no README.
-- `presentation/`: lugar reservado para o slide final exportado.
+## Objetivos
+
+- Simular uma rede com firewall entre WAN, LAN e VPN.
+- Demonstrar gateway, DHCP, DNS, NAT de saída e DNAT.
+- Validar bloqueios de firewall entre redes.
+- Demonstrar acesso controlado à LAN por WireGuard.
+- Entregar um roteiro executável de validação para apresentação acadêmica.
+
+## Escopo Acadêmico
+
+Este repositório foi organizado como material de entrega e reprodução do
+experimento. Ele contém:
+
+- documentação da topologia e dos conceitos demonstrados;
+- scripts de preparação do host Linux;
+- importação automatizada das VMs no KVM/libvirt;
+- provisionamento local dos clientes;
+- dashboard de validação com testes controlados;
+- guias de diagnóstico para erros comuns de ambiente.
 
 ## Topologia
-
-O laboratório usa três VMs:
 
 | VM | Função |
 | --- | --- |
 | `opnsense-fw` | Firewall, gateway, DHCP, DNS, NAT, DNAT e WireGuard |
-| `cliente-lan` | Cliente da rede interna e servidor HTTP temporário |
+| `cliente-lan` | Cliente interno da LAN e servidor HTTP temporário |
 | `cliente-wan` | Cliente externo e peer WireGuard |
 
-Redes:
+| Rede | Endereço | Uso |
+| --- | --- | --- |
+| WAN | `10.10.10.0/24` | Rede externa simulada |
+| LAN | `192.168.10.0/24` | Rede interna protegida |
+| WireGuard | `10.99.0.0/24` | Túnel VPN |
 
-| Rede | Endereço |
+Endereços principais:
+
+| Host | Endereço |
 | --- | --- |
-| WAN | `10.10.10.0/24` |
-| LAN | `192.168.10.0/24` |
-| WireGuard | `10.99.0.0/24` |
+| OPNsense LAN | `192.168.10.1` |
+| OPNsense WAN | `10.10.10.146` |
+| Cliente LAN | `192.168.10.100` |
+| Cliente WAN | `10.10.10.171` |
+| OPNsense WireGuard | `10.99.0.1` |
+| Cliente WireGuard | `10.99.0.2` |
 
-![Topologia do laboratório](assets/images/topologia-laboratorio-completa.png)
+## Estrutura do Repositório
 
-## Instalação Rápida
+| Caminho | Conteúdo |
+| --- | --- |
+| `app/` | Dashboard FastAPI usado na validação |
+| `infra/` | Scripts de instalação, diagnóstico, importação e provisionamento |
+| `infra/vm-config/` | Definições libvirt das VMs e redes |
+| `docs/` | Topologia, roteiro, arquivos externos e solução de problemas |
+| `assets/` | Imagens e logos usados na documentação/apresentação |
+| `presentation/` | Apresentação final exportada em PDF |
+| `COMO_RODAR.md` | Guia curto para executar o laboratório |
+| `INSTALACAO.md` | Guia de instalação detalhado |
 
-O caminho curto está em [COMO_RODAR.md](COMO_RODAR.md). O caminho completo está
-em [INSTALACAO.md](INSTALACAO.md). Resumo:
+## Requisitos
+
+- Linux com virtualização habilitada na BIOS/UEFI.
+- KVM/QEMU e libvirt.
+- Docker com Compose para o dashboard, ou Python 3 para modo nativo.
+- Cockpit opcional para gerenciar as VMs pelo navegador.
+- Aproximadamente 6 GB de RAM livres.
+- Aproximadamente 15 GB de disco livres.
+- Arquivos das VMs em `local/vm-images/`.
+
+O script `infra/install-prereqs.sh` instala os pacotes equivalentes usando o
+gerenciador disponível no sistema (`apt`, `dnf`, `pacman` ou `zypper`).
+
+## Execução Rápida
+
+1. Instale as dependências:
 
 ```bash
 sudo bash infra/install-prereqs.sh
-# faça logout/login para os grupos libvirt, kvm e docker valerem
 ```
 
-Baixe os arquivos de VM pelo Google Drive:
+Depois faça logout/login para os grupos `libvirt`, `kvm` e `docker` valerem.
+
+2. Coloque os arquivos de VM em `local/vm-images/`:
 
 ```text
-https://drive.google.com/drive/u/0/folders/1Nov2k5MaHthKGU58kkjkTqK25pcs-Agj
+opnsense-fw-installed.qcow2
+cliente-lan.qcow2
+cliente-wan.qcow2
+noble-server-cloudimg-amd64.img
+cliente-lan.iso
+cliente-wan.iso
 ```
 
-Lista completa dos arquivos em [docs/arquivos-drive.md](docs/arquivos-drive.md).
-
-Depois coloque as imagens em `local/vm-images/` e rode:
+3. Valide o host e suba o laboratório:
 
 ```bash
 bash infra/check-host.sh
 bash infra/setup.sh
 ```
 
-O setup gera a chave SSH local do laboratório em `local/ssh/lab_ed25519` e a
-instala nos clientes. Não é necessário receber uma chave pessoal externa.
-
-Acesse:
+4. Acesse:
 
 ```text
-http://localhost:8088
+Dashboard: http://localhost:8088
+OPNsense:  https://192.168.10.1  (root / opnsense)
+Cockpit:   http://localhost:9090
 ```
 
-## Requisitos
+O guia curto está em [COMO_RODAR.md](COMO_RODAR.md). O guia completo está em
+[INSTALACAO.md](INSTALACAO.md).
 
-- Linux com virtualização habilitada na BIOS/UEFI (VT-x ou AMD-V).
-- KVM/libvirt.
-- Docker com Compose, ou Python 3 para o fallback nativo.
-- Aproximadamente 6 GB de RAM livres.
-- Aproximadamente 15 GB de disco livres.
-- Arquivos das VMs baixados do Drive.
+## Validações do Dashboard
 
-O script `infra/install-prereqs.sh` detecta automaticamente:
-
-- Debian, Ubuntu e Mint (`apt`)
-- Fedora (`dnf`)
-- Arch e Manjaro (`pacman`)
-- openSUSE (`zypper`)
-
-## Dashboard
-
-O dashboard fica em `http://localhost:8088` e executa testes fixos, sem terminal
-livre, para evitar erro durante a apresentação.
+O dashboard executa testes fixos, sem terminal livre, para reduzir erro durante
+a apresentação.
 
 Ele valida:
 
-- status das VMs;
-- gateway, DHCP e DNS;
-- NAT de saída;
-- bloqueios de firewall;
-- DNAT na porta `8080`;
-- WireGuard e acesso à LAN.
+- status das três VMs;
+- gateway, DHCP e DNS da LAN;
+- NAT de saída da LAN;
+- bloqueio de acesso direto da WAN para a LAN;
+- bloqueio da porta WAN `80`;
+- publicação controlada com DNAT na porta `8080`;
+- WireGuard e acesso à LAN via VPN;
+- limpeza do servidor HTTP temporário.
 
-Também abre:
+Detalhes do roteiro estão em [docs/roteiro-validacao.md](docs/roteiro-validacao.md).
 
-- OPNsense: `https://192.168.10.1`
-- Cockpit: `http://localhost:9090`
+## Metodologia de Validação
 
-Se Docker der trabalho na distro, rode o dashboard sem container:
+A validação foi dividida em camadas:
+
+1. host: comandos, grupos, KVM, libvirt, Docker e arquivos de imagem;
+2. infraestrutura: redes virtuais, discos importados e VMs em execução;
+3. provisionamento: chave SSH local, IP fixo e configuração WireGuard;
+4. rede: gateway, DNS, NAT, bloqueios de firewall e DNAT;
+5. VPN: handshake WireGuard e acesso controlado à LAN.
+
+Essa separação facilita demonstrar o funcionamento do laboratório e também
+identificar rapidamente onde uma falha está ocorrendo.
+
+## Diagnóstico
+
+Antes ou depois da execução, estes comandos ajudam a verificar o estado do lab:
+
+```bash
+bash infra/check-host.sh
+bash infra/diagnose-lab.sh
+virsh -c qemu:///system list --all
+virsh -c qemu:///system net-list --all
+docker compose ps
+```
+
+Se o dashboard em Docker falhar, rode em modo nativo:
 
 ```bash
 bash infra/run-dashboard-native.sh
 ```
 
-Problemas comuns de Docker, grupos, Cockpit e imagens estão em
+Problemas comuns e correções estão em
 [docs/solucao-problemas.md](docs/solucao-problemas.md).
-
-Se no Fedora os testes 3 e 9 falharem juntos, rode:
-
-```bash
-sudo bash infra/fix-libvirt-nat.sh
-```
-
-## Roteiro de Demonstração
-
-1. Abrir o dashboard.
-2. Abrir o OPNsense e mostrar interfaces/regras.
-3. Executar status do laboratório.
-4. Validar Gateway, DHCP e DNS.
-5. Validar NAT de saída.
-6. Validar bloqueios de firewall.
-7. Subir e testar DNAT `8080`.
-8. Validar WireGuard.
-9. Parar o HTTP temporário.
-
-Detalhes em [docs/roteiro-validacao.md](docs/roteiro-validacao.md).
