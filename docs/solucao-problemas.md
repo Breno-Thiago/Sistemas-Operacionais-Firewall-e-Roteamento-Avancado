@@ -186,6 +186,38 @@ ssh -i local/ssh/lab_ed25519 lab@192.168.10.100 hostname
 ssh -i local/ssh/lab_ed25519 lab@10.10.10.171 hostname
 ```
 
+## Dashboard sem permissão para ler a chave
+
+Erro nos testes do dashboard:
+
+```text
+Warning: Identity file /home/app/.ssh/lab_ed25519 not accessible: Permission denied.
+lab@10.10.10.171: Permission denied (publickey,password).
+```
+
+No Fedora, isso costuma ser SELinux bloqueando o bind mount da pasta
+`local/ssh` dentro do container. O `docker-compose.yml` já monta a pasta com
+label SELinux:
+
+```yaml
+./local/ssh:/home/app/.ssh:ro,Z
+```
+
+Depois de atualizar o repositório, recrie o dashboard:
+
+```bash
+docker compose down
+docker compose up -d --build
+```
+
+Se ainda falhar, confira se a chave existe e foi instalada nas VMs:
+
+```bash
+ls -l local/ssh/lab_ed25519
+bash infra/provision-clients.sh
+docker compose up -d --build
+```
+
 ## Arquivos de imagem no lugar errado
 
 O setup espera exatamente:

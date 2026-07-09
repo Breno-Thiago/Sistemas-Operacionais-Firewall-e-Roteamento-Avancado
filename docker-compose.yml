@@ -21,5 +21,5 @@ services:
       SSH_KEY_PATH: ${SSH_KEY_PATH:-/home/app/.ssh/lab_ed25519}
       SSH_EXTRA_OPTS: ${SSH_EXTRA_OPTS:-}
     volumes:
-      - ./local/ssh:/home/app/.ssh:ro
+      - ./local/ssh:/home/app/.ssh:ro,Z
     restart: unless-stopped

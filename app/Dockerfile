@@ -9,7 +9,7 @@ COPY app/requirements.txt /app/requirements.txt
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
 COPY app /app
-RUN useradd -m app && chown -R app:app /app
+RUN useradd -m -u 1000 app && chown -R app:app /app
 USER app
 
 EXPOSE 8088
