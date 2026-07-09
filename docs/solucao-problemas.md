@@ -41,6 +41,31 @@ Se Docker continuar dando trabalho, o dashboard pode rodar sem container:
 bash infra/run-dashboard-native.sh
 ```
 
+## Docker daemon desligado
+
+No Fedora e em algumas instalações novas, o usuário pode estar no grupo
+`docker`, mas o serviço ainda não estar ativo. O diagnóstico mostra algo como:
+
+```text
+Docker daemon esta instalado, mas nao esta rodando.
+```
+
+Corrija:
+
+```bash
+sudo systemctl enable --now docker
+docker ps
+```
+
+Se `docker ps` ainda der permissão negada depois disso:
+
+```bash
+newgrp docker
+docker ps
+```
+
+ou faça logout/login.
+
 ## Docker build travando em apt-get update
 
 Sintoma:

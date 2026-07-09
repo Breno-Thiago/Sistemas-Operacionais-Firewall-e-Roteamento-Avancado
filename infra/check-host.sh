@@ -64,11 +64,22 @@ else
   bad "libvirt qemu:///system inacessivel. Rode sudo systemctl enable --now libvirtd."
 fi
 
-if docker ps >/dev/null 2>&1; then
+docker_err="$(mktemp)"
+if docker ps >/dev/null 2>"$docker_err"; then
   ok "Docker acessivel pelo usuario atual"
 else
-  bad "Docker instalado, mas inacessivel pela sessao atual. Normalmente resolve com logout/login apos entrar no grupo docker."
+  docker_msg="$(tr '\n' ' ' < "$docker_err")"
+  if systemctl list-unit-files docker.service >/dev/null 2>&1 && ! systemctl is-active --quiet docker 2>/dev/null; then
+    bad "Docker daemon esta instalado, mas nao esta rodando. Rode sudo systemctl enable --now docker."
+  elif printf '%s' "$docker_msg" | grep -qiE 'permission denied|Got permission denied'; then
+    bad "Docker esta rodando, mas a sessao atual nao tem permissao em /var/run/docker.sock. Faca logout/login ou rode newgrp docker."
+  elif printf '%s' "$docker_msg" | grep -qiE 'Cannot connect|Is the docker daemon running|connection refused'; then
+    bad "Docker nao respondeu no socket. Rode sudo systemctl enable --now docker e teste docker ps."
+  else
+    bad "Docker inacessivel: $docker_msg"
+  fi
 fi
+rm -f "$docker_err"
 
 if systemctl is-active --quiet cockpit.socket 2>/dev/null; then
   ok "Cockpit ativo em http://localhost:9090"
