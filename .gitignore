@@ -17,6 +17,7 @@ __pycache__/
 *.toc
 *.fls
 *.fdb_latexmk
+paper/build/
 
 *.qcow2
 *.img
