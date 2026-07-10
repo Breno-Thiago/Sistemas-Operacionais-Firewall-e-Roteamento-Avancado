@@ -14,9 +14,12 @@ const nextBtn = $("#nextBtn");
 const stageSection = $("#stageSection");
 const stageCount = $("#stageCount");
 const stageDots = $("#stageDots");
+const stageNav = document.querySelector(".stage-nav");
 const opnUser = $("#opnUser");
 const opnPass = $("#opnPass");
 const themeToggle = $("#themeToggle");
+const TERMINAL_FONT_STEPS = [13, 14, 15.5, 17, 18.5, 20];
+const TERMINAL_COMMAND_TIMEOUT = 12000;
 
 const THEME_LABEL = { auto: "Tema · Auto", light: "Tema · Claro", dark: "Tema · Escuro" };
 function applyTheme(mode) {
@@ -35,12 +38,18 @@ applyTheme(localStorage.getItem("lab-theme") || "auto");
 let checksCache = [];
 let currentIndex = 0;
 let creds = { opnsense_user: "root", opnsense_pass: "opnsense", cockpit_user: "" };
+let activeTerminal = null;
+let terminalFontIndex = Number(localStorage.getItem("terminal-font-index") || "2");
 
 opnsenseLink.addEventListener("click", (e) => { e.preventDefault(); openTunnel("opnsense", opnsenseLink); });
 cockpitLink.addEventListener("click", (e) => { e.preventDefault(); openTunnel("cockpit", cockpitLink); });
 runAll.addEventListener("click", async () => {
   runAll.disabled = true;
-  for (let i = 0; i < checksCache.length; i += 1) { goTo(i); await runCheck(checksCache[i].id); }
+  for (let i = 0; i < checksCache.length; i += 1) {
+    goTo(i);
+    await waitForTerminal(checksCache[i].id);
+    await runCheck(checksCache[i].id);
+  }
   runAll.disabled = false;
 });
 prevBtn.addEventListener("click", () => goTo(currentIndex - 1));
@@ -56,6 +65,12 @@ document.addEventListener("click", async (e) => {
   const wide = e.target.closest("[data-wide-toggle]");
   if (wide) {
     toggleTerminalWide(wide);
+    return;
+  }
+
+  const zoom = e.target.closest("[data-terminal-zoom]");
+  if (zoom) {
+    changeTerminalZoom(Number(zoom.dataset.terminalZoom));
     return;
   }
 
@@ -85,41 +100,79 @@ function toggleTerminalWide(btn) {
   if (!card) return;
   const enabled = !card.classList.contains("terminal-wide");
   card.classList.toggle("terminal-wide", enabled);
-  btn.textContent = enabled ? "↔ layout dividido" : "↔ terminal amplo";
+  btn.textContent = enabled ? "↔ mostrar detalhes" : "↔ foco no terminal";
   btn.setAttribute("aria-pressed", String(enabled));
 }
 
+function applyTerminalZoom() {
+  terminalFontIndex = Math.max(0, Math.min(terminalFontIndex, TERMINAL_FONT_STEPS.length - 1));
+  document.documentElement.style.setProperty("--terminal-font-size", `${TERMINAL_FONT_STEPS[terminalFontIndex]}px`);
+  localStorage.setItem("terminal-font-index", String(terminalFontIndex));
+  document.querySelectorAll("[data-terminal-zoom='-1']").forEach((button) => { button.disabled = terminalFontIndex === 0; });
+  document.querySelectorAll("[data-terminal-zoom='1']").forEach((button) => { button.disabled = terminalFontIndex === TERMINAL_FONT_STEPS.length - 1; });
+}
+
+function changeTerminalZoom(delta) {
+  terminalFontIndex += delta;
+  applyTerminalZoom();
+}
+
 function outputText(result) {
-  return [
-    (result.stdout || "").trim() || "(sem stdout)",
-    (result.stderr || "").trim() ? `\n─ stderr ─\n${result.stderr.trim()}` : "",
-    `\n─ exit=${result.returncode} · ${result.summary}`,
-    result.hint ? `\n💡 ${result.hint}` : "",
-  ].join("\n").trim();
+  return [(result.stdout || "").trim(), (result.stderr || "").trim()].filter(Boolean).join("\n");
 }
 
 function terminalClass(line) {
   if (line.startsWith("@@CMD ")) return "term-cmd";
-  if (line.startsWith("─ stderr") || /^Warning:|^curl:|^ERROR|^TIMEOUT/.test(line)) return "term-err";
+  if (line.startsWith("─ stderr") || /^Warning:|^curl:|^cat:|^kill:|^ERROR|^TIMEOUT/.test(line)) return "term-err";
   if (line.startsWith("💡")) return "term-hint";
   if (line.startsWith("─ exit=0")) return "term-exit-ok";
   if (line.startsWith("─ exit=")) return "term-exit-fail";
-  if (/(^|_)(OK|UP|BLOCKED|VALIDADO|READY)|=200 EXIT=0|=204 EXIT=0|=000 EXIT=28|LAN_IP=|DEFAULT_VIA=|DNS_SERVER=|WG_/.test(line)) return "term-ok";
-  if (/DOWN|FAIL|falhou|Atenção|nao apareceu/.test(line)) return "term-fail";
+  if (/(^|_)(OK|UP|BLOCKED|VALIDADO|READY)|reachable|0% packet loss|=200 EXIT=0|=204 EXIT=0|=000 EXIT=28|LAN_IP=|DEFAULT_VIA=|DNS_SERVER=|WG_/.test(line)) return "term-ok";
+  if (/DOWN|FAIL|falhou|Atenção|nao apareceu|No such file|usage:/.test(line)) return "term-fail";
   if (/^ROUTE_|^CLIENT_ADDRESS_MODE=|^PID=/.test(line)) return "term-info";
   return "";
 }
 
+function terminalInline(line) {
+  return esc(line)
+    .replace(/(https?:\/\/[^\s]+)/g, '<span class="term-link">$1</span>')
+    .replace(/\b((?:\d{1,3}\.){3}\d{1,3})\b/g, '<span class="term-ip">$1</span>');
+}
+
+function terminalLineHTML(line) {
+  if (line.startsWith("@@CMD ")) {
+    return `<span class="term-cmd">${terminalInline(line.slice(6))}</span>`;
+  }
+  const prompt = line.match(/^([^\s@]+@[^\s:]+(?::[^$\n]*)?\$\s*)(.*)$/);
+  if (prompt) {
+    return `<span class="term-prompt">${esc(prompt[1])}</span><span class="term-command">${terminalInline(prompt[2])}</span>`;
+  }
+  if (/^64 bytes from|0% packet loss|^LISTEN\b|^HTTP\/\S+ 2\d\d/.test(line)) return `<span class="term-ok">${terminalInline(line)}</span>`;
+  if (/^PING\b|^---|^rtt |^default via|^\d+\.\d+\.\d+\.\d+ via/.test(line)) return `<span class="term-info">${terminalInline(line)}</span>`;
+  if (/^(Welcome to| \* | System information| Last login:|[0-9]+ updates|To see these|Enable ESM|Expanded Security)/.test(line)) return `<span class="term-dim">${terminalInline(line)}</span>`;
+  const cls = terminalClass(line);
+  return `<span class="${cls}">${terminalInline(line)}</span>`;
+}
+
 function terminalHTML(text) {
-  return text.split("\n").map((line) => {
-    const cls = terminalClass(line);
-    const clean = line.startsWith("@@CMD ") ? line.slice(6) : line;
-    return `<span class="${cls}">${esc(clean)}</span>`;
-  }).join("\n");
+  return text.split("\n").map(terminalLineHTML).join("\n");
+}
+
+function currentTerminalRaw(node) {
+  return node.querySelector(".output")?.dataset.raw || "";
 }
 
 function setOutput(node, text) {
+  node.dataset.raw = text;
   node.innerHTML = terminalHTML(text);
+}
+
+function appendTerminalOutput(node, text) {
+  const raw = text.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r/g, "");
+  node.dataset.raw = (node.dataset.raw || "") + raw;
+  node.innerHTML = terminalHTML(node.dataset.raw);
+  const body = node.closest(".terminal-body");
+  if (body) body.scrollTop = body.scrollHeight;
 }
 
 function setResult(id, result) {
@@ -136,12 +189,13 @@ function setResult(id, result) {
 }
 
 function slideHTML(check, index) {
-  const steps = (check.steps || []).map((s) => `
+  const displaySteps = (check.interactive_steps?.length ? check.interactive_steps : check.steps?.map((step) => step.cmd) || [])
+    .map((cmd, stepIndex) => ({ cmd, does: check.steps?.[stepIndex]?.does || "Executa este comando no terminal da VM." }));
+  const steps = displaySteps.map((s) => `
     <li class="step"><code>${esc(s.cmd)}</code><span>${esc(s.does)}</span></li>`).join("");
   const reads = (check.reads || []).map((r) => `
     <li class="step"><code class="ok">${esc(r.sig)}</code><span>${esc(r.means)}</span></li>`).join("")
     || `<li class="step"><span>Confira a saída no terminal ao lado.</span></li>`;
-  const cmd = check.terminal_command || check.command || "";
   return `
     <article class="check accent-${esc(check.accent)}" data-check-id="${esc(check.id)}" data-state="idle" data-index="${index}">
       <div class="check-top">
@@ -163,45 +217,62 @@ function slideHTML(check, index) {
             <span class="win-dots"><i></i><i></i><i></i></span>
             <span class="io-tag in">entrada</span>
             <span class="io-sub">terminal de <b>${esc(check.host)}</b></span>
-            <button class="copy" data-copy="${esc(cmd)}" title="copiar comando">⧉ copiar</button>
           </header>
           <div class="io-body">
             <div class="io-cap">o que cada parte faz</div>
             <ol class="step-list">${steps}</ol>
-            <div class="io-cap cmd-cap">comando injetado no console</div>
-            <pre class="cmd">${esc(cmd)}</pre>
           </div>
-          <footer class="io-foot">
-            <button class="btn btn-primary run" type="button" data-run="${esc(check.id)}">▶ Executar neste console</button>
-          </footer>
         </section>
 
-        <section class="io-pane io-out">
-          <header class="io-head">
-            <span class="win-dots"><i></i><i></i><i></i></span>
+        <section class="io-pane io-read">
+          <header class="io-head compact-head">
             <span class="io-tag out">saída</span>
-            <span class="io-sub">evidência de <b>${esc(check.host)}</b></span>
-            <button class="terminal-toggle" type="button" data-wide-toggle aria-pressed="false" title="alternar largura do terminal">↔ terminal amplo</button>
-            <span class="result-badge">aguardando</span>
+            <span class="io-sub">o que procurar na evidência</span>
           </header>
           <div class="read">
             <div class="read-head">o que procurar na saída</div>
             <ol class="step-list">${reads}</ol>
           </div>
-          <div class="io-body">
-            <pre class="output">— execute a entrada para ver a saída —</pre>
-          </div>
         </section>
       </div>
+
+      <section class="terminal-pane">
+        <header class="io-head terminal-head">
+          <span class="win-dots"><i></i><i></i><i></i></span>
+          <span class="io-tag out">saída</span>
+          <span class="io-sub">terminal de <b>${esc(check.host)}</b></span>
+          <span class="terminal-zoom" aria-label="Zoom do terminal">
+            <button type="button" data-terminal-zoom="-1" title="Diminuir fonte do terminal">−</button>
+            <span>zoom</span>
+            <button type="button" data-terminal-zoom="1" title="Aumentar fonte do terminal">+</button>
+          </span>
+          <button class="terminal-toggle" type="button" data-wide-toggle aria-pressed="false" title="ocultar ou mostrar os detalhes do teste">↔ foco no terminal</button>
+          <span class="result-badge">aguardando</span>
+          <button class="btn btn-primary terminal-run run" type="button" data-run="${esc(check.id)}">▶ Executar</button>
+        </header>
+        <div class="terminal-body"><pre class="output"></pre></div>
+        <form class="terminal-manual" data-manual-form data-check-id="${esc(check.id)}">
+          <input name="command" type="text" autocomplete="off" spellcheck="false" placeholder="Conectando ao terminal..." aria-label="Comando manual" disabled />
+          <button type="submit" title="Executar comando">↵</button>
+          <button type="button" data-interrupt title="Interromper comando (Ctrl+C)">^C</button>
+        </form>
+      </section>
     </article>`;
 }
 
 function renderChecks(checks) {
+  closeInteractiveTerminal();
   checksCache = checks;
   checksRoot.innerHTML = checks.map((c, i) => slideHTML(c, i)).join("");
   stageDots.innerHTML = checks.map((c, i) => `<button class="dot" type="button" data-goto="${i}" title="${esc(c.title)}"></button>`).join("");
   checksRoot.querySelectorAll("[data-run]").forEach((b) => b.addEventListener("click", () => runCheck(b.dataset.run)));
+  checksRoot.querySelectorAll("[data-manual-form]").forEach((form) => form.addEventListener("submit", (event) => {
+    event.preventDefault();
+    sendTerminalInput(form);
+  }));
+  checksRoot.querySelectorAll("[data-interrupt]").forEach((button) => button.addEventListener("click", () => sendTerminalInterrupt(button.closest("form"))));
   stageDots.querySelectorAll("[data-goto]").forEach((d) => d.addEventListener("click", () => goTo(Number(d.dataset.goto))));
+  applyTerminalZoom();
   currentIndex = Math.min(currentIndex, checks.length - 1);
   goTo(currentIndex);
 }
@@ -211,11 +282,14 @@ function goTo(index) {
   currentIndex = Math.max(0, Math.min(index, checksCache.length - 1));
   checksRoot.querySelectorAll(".check").forEach((n, i) => n.classList.toggle("is-active", i === currentIndex));
   const c = checksCache[currentIndex];
+  const activeMeta = checksRoot.querySelector(`[data-index="${currentIndex}"] .check-meta`);
+  if (activeMeta) activeMeta.append(stageNav);
   stageSection.textContent = c.section;
   stageCount.textContent = `${currentIndex + 1} / ${checksCache.length}`;
   prevBtn.disabled = currentIndex === 0;
   nextBtn.disabled = currentIndex === checksCache.length - 1;
   updateDots();
+  connectInteractiveTerminal(checksRoot.querySelector(`[data-index="${currentIndex}"]`), c.id);
 }
 
 function updateDots() {
@@ -230,18 +304,202 @@ async function runCheck(id) {
   const node = document.querySelector(`[data-check-id="${id}"]`);
   const button = node.querySelector("[data-run]");
   const badge = node.querySelector(".result-badge");
+  const check = checksCache.find((item) => item.id === id);
+  const commands = check?.interactive_steps || check?.steps?.map((step) => step.cmd) || [];
+  if (!commands.length || activeTerminal?.id !== id || activeTerminal.socket.readyState !== WebSocket.OPEN || !activeTerminal.promptReady) {
+    notify("Aguarde o terminal SSH desta VM conectar.", "running");
+    return;
+  }
   node.dataset.state = "running";
   node.querySelector(".state").textContent = stateLabels.running;
-  setOutput(node.querySelector(".output"), "@@CMD dashboard@local:~$ aguardando execução\ninjetando comando no console da VM…");
   badge.textContent = "executando"; badge.className = "result-badge running";
   button.disabled = true;
+  resetEvidence(node);
   updateDots();
-  try {
-    const response = await fetch(endpoint(`/api/checks/${id}/run`), { method: "POST" });
-    setResult(id, await response.json());
-  } catch (error) {
-    setResult(id, { stdout: "", stderr: String(error), returncode: 1, ok: false, summary: "Erro ao chamar backend.", hint: "Container do dashboard rodando?" });
-  } finally { button.disabled = false; }
+  const runStart = currentTerminalRaw(node).length;
+  await sendTerminalCommands(commands);
+  const timedOut = activeTerminal?.timedOut;
+  const runText = currentTerminalRaw(node).slice(runStart);
+  const evidence = validateEvidence(node, check, runText);
+  const ok = !timedOut && evidence.ok;
+  node.dataset.state = ok ? "ok" : "fail";
+  node.querySelector(".state").textContent = timedOut ? "Interrompido" : (ok ? stateLabels.ok : stateLabels.fail);
+  badge.textContent = timedOut ? "interrompido" : (ok ? "sucesso" : "falhou");
+  badge.className = `result-badge ${ok ? "ok" : "fail"}`;
+  button.disabled = false;
+  updateDots();
+}
+
+function resetEvidence(node) {
+  // A coluna de evidências é apenas uma referência didática; o estado da aba
+  // é mostrado pelas bolinhas de navegação.
+}
+
+function validateEvidence(node, check, text) {
+  const reads = check.reads || [];
+  if (!reads.length) return { ok: true, total: 0, passed: 0 };
+  let passed = 0;
+  reads.forEach((read) => {
+    const ok = evidenceMatches(check, read.sig || "", text);
+    if (ok) passed += 1;
+  });
+  return { ok: passed === reads.length, total: reads.length, passed };
+}
+
+function evidenceMatches(check, sig, text) {
+  if (check.id === "dnat-stop" && sig.startsWith("sem LISTEN")) {
+    return !/LISTEN\s+\d+\s+\d+\s+\S*:8080\b/.test(text);
+  }
+  if (sig.includes("...")) {
+    return sig.split("...").map((part) => part.trim()).filter(Boolean).every((part) => text.includes(part));
+  }
+  return text.includes(sig);
+}
+
+function terminalSocketUrl(id) {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.host}/api/terminals/${encodeURIComponent(id)}?mode=${encodeURIComponent(MODE)}`;
+}
+
+function closeInteractiveTerminal() {
+  if (activeTerminal) {
+    clearTimeout(activeTerminal.timeoutTimer);
+    activeTerminal.socket.close();
+  }
+  activeTerminal = null;
+}
+
+function connectInteractiveTerminal(node, id) {
+  if (!node) return;
+  closeInteractiveTerminal();
+  const output = node.querySelector(".output");
+  const form = node.querySelector("[data-manual-form]");
+  const commandField = form.querySelector('input[name="command"]');
+  setOutput(output, "");
+  const socket = new WebSocket(terminalSocketUrl(id));
+  activeTerminal = { id, node, socket, received: "", queue: [], waitingForPrompt: false, manualRunning: false, timedOut: false, resolveQueue: null, commandField, promptReady: false, timeoutTimer: null };
+
+  socket.addEventListener("open", () => {
+    if (activeTerminal?.socket !== socket) return;
+    commandField.placeholder = "Abrindo shell SSH...";
+  });
+  socket.addEventListener("message", (event) => {
+    if (activeTerminal?.socket !== socket) return;
+    appendTerminalOutput(output, event.data);
+    activeTerminal.received += event.data.replace(/\x1B\[[0-?]*[ -/]*[@-~]/g, "").replace(/\r/g, "");
+    if (isTerminalPrompt(activeTerminal.received)) {
+      clearTimeout(activeTerminal.timeoutTimer);
+      activeTerminal.manualRunning = false;
+    }
+    if (!activeTerminal.promptReady && isTerminalPrompt(activeTerminal.received)) {
+      activeTerminal.promptReady = true;
+      commandField.disabled = false;
+      commandField.placeholder = "Digite um comando e pressione Enter";
+      commandField.focus();
+    }
+    advanceTerminalQueue();
+  });
+  socket.addEventListener("close", () => {
+    if (activeTerminal?.socket !== socket) return;
+    commandField.disabled = true;
+    commandField.placeholder = "Terminal desconectado";
+  });
+  socket.addEventListener("error", () => {
+    if (activeTerminal?.socket === socket) notify("Não foi possível abrir o terminal SSH desta VM.", "fail");
+  });
+}
+
+function sendTerminalInput(form) {
+  const commandField = form.querySelector('input[name="command"]');
+  const command = commandField.value.trim();
+  if (!command) { commandField.focus(); return; }
+  if (activeTerminal?.socket.readyState !== WebSocket.OPEN) return;
+  activeTerminal.received = "";
+  activeTerminal.manualRunning = true;
+  activeTerminal.socket.send(`${command}\n`);
+  startTerminalTimeout();
+  commandField.value = "";
+  commandField.focus();
+}
+
+function sendTerminalInterrupt(form) {
+  if (!form || activeTerminal?.socket.readyState !== WebSocket.OPEN) return;
+  clearTimeout(activeTerminal.timeoutTimer);
+  activeTerminal.queue = [];
+  activeTerminal.waitingForPrompt = false;
+  activeTerminal.manualRunning = false;
+  activeTerminal.resolveQueue?.();
+  activeTerminal.resolveQueue = null;
+  activeTerminal.commandField.disabled = false;
+  activeTerminal.socket.send("\u0003");
+}
+
+function isTerminalPrompt(text) {
+  return /(?:^|\n)[^\s@]+@[^\s:]+(?::[^$\n]*)?\$\s*$/.test(text);
+}
+
+function sendTerminalCommands(commands) {
+  return new Promise((resolve) => {
+    clearTimeout(activeTerminal.timeoutTimer);
+    activeTerminal.queue = [...commands];
+    activeTerminal.timedOut = false;
+    activeTerminal.resolveQueue = resolve;
+    activeTerminal.waitingForPrompt = false;
+    activeTerminal.commandField.disabled = true;
+    advanceTerminalQueue();
+  });
+}
+
+function waitForTerminal(id, attempts = 50) {
+  return new Promise((resolve) => {
+    const poll = (remaining) => {
+      if (activeTerminal?.id === id && activeTerminal.promptReady) { resolve(); return; }
+      if (remaining <= 0) { resolve(); return; }
+      setTimeout(() => poll(remaining - 1), 100);
+    };
+    poll(attempts);
+  });
+}
+
+function advanceTerminalQueue() {
+  if (!activeTerminal || activeTerminal.waitingForPrompt) {
+    if (activeTerminal?.waitingForPrompt && isTerminalPrompt(activeTerminal.received)) {
+      clearTimeout(activeTerminal.timeoutTimer);
+      activeTerminal.waitingForPrompt = false;
+      advanceTerminalQueue();
+    }
+    return;
+  }
+  if (!activeTerminal.queue.length) {
+    activeTerminal.commandField.disabled = false;
+    activeTerminal.commandField.focus();
+    activeTerminal.resolveQueue?.();
+    activeTerminal.resolveQueue = null;
+    return;
+  }
+  const command = activeTerminal.queue.shift();
+  activeTerminal.received = "";
+  activeTerminal.waitingForPrompt = true;
+  activeTerminal.socket.send(`${command}\n`);
+  startTerminalTimeout();
+}
+
+function startTerminalTimeout(ms = TERMINAL_COMMAND_TIMEOUT) {
+  if (!activeTerminal) return;
+  clearTimeout(activeTerminal.timeoutTimer);
+  activeTerminal.timeoutTimer = setTimeout(() => {
+    if (!activeTerminal || activeTerminal.socket.readyState !== WebSocket.OPEN) return;
+    if (activeTerminal.waitingForPrompt || activeTerminal.manualRunning) {
+      activeTerminal.socket.send("\u0003");
+      activeTerminal.timedOut = true;
+      activeTerminal.queue = [];
+      activeTerminal.waitingForPrompt = false;
+      activeTerminal.manualRunning = false;
+      activeTerminal.commandField.disabled = false;
+      activeTerminal.resolveQueue?.();
+      activeTerminal.resolveQueue = null;
+    }
+  }, ms);
 }
 
 async function openTunnel(name, element) {

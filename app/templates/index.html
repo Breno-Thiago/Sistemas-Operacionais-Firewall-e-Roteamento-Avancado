@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>OPNsense Lab · Console</title>
-    <link rel="stylesheet" href="/static/styles.css?v=18" />
+    <link rel="stylesheet" href="/static/styles.css?v=37" />
   </head>
   <body>
     <div class="app">
@@ -51,23 +51,20 @@
 
       <main class="board">
         <div class="board-head">
-          <div class="headline">
-            <span class="io-tag in">entrada</span><span class="hl-txt">comando via SSH no console da VM</span>
-            <span class="arrowto">→</span>
-            <span class="io-tag out">saída</span><span class="hl-txt">evidência que a VM devolve</span>
-          </div>
           <div class="stage-nav">
             <span class="stage-section" id="stageSection">—</span>
             <span class="stage-count" id="stageCount">00/00</span>
             <div class="stage-dots" id="stageDots"></div>
+            <span class="stage-controls" aria-label="Navegar entre testes">
+              <button class="arrow" id="prevBtn" type="button" aria-label="Anterior" title="Teste anterior">‹</button>
+              <button class="arrow" id="nextBtn" type="button" aria-label="Próximo" title="Próximo teste">›</button>
+            </span>
             <button id="runAll" class="btn btn-accent btn-sm" type="button">▶ Rodar tudo</button>
           </div>
         </div>
 
         <div class="carousel">
-          <button class="arrow" id="prevBtn" type="button" aria-label="Anterior">‹</button>
           <div class="stage" id="checks"></div>
-          <button class="arrow" id="nextBtn" type="button" aria-label="Próximo">›</button>
         </div>
 
         <div class="footbar">
@@ -77,6 +74,6 @@
       </main>
     </div>
 
-    <script src="/static/app.js?v=18"></script>
+    <script src="/static/app.js?v=37"></script>
   </body>
 </html>

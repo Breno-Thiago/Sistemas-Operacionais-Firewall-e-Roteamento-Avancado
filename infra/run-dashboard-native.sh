@@ -19,4 +19,4 @@ export OPNSENSE_PASS="${OPNSENSE_PASS:-opnsense}"
 export COCKPIT_USER="${COCKPIT_USER:-$USER}"
 
 echo "Dashboard nativo em http://localhost:8088   (Ctrl+C para parar)"
-exec .venv/bin/uvicorn main:app --host 0.0.0.0 --port 8088
+exec .venv/bin/uvicorn main:app --host 127.0.0.1 --port 8088

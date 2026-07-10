@@ -121,19 +121,21 @@ O guia curto está em [COMO_RODAR.md](COMO_RODAR.md). O guia completo está em
 
 ## Validações do Dashboard
 
-O dashboard executa nove validações fixas, sem terminal livre, para reduzir erro
-durante a apresentação.
+O dashboard executa oito validações guiadas e também oferece um terminal SSH
+interativo no rodapé de cada card. O que aparece no painel é o shell real da
+VM indicada, incluindo o prompt, os comandos digitados e a saída devolvida por
+ela. Esse acesso é ligado somente em `http://localhost:8088`, no próprio
+computador que executa o laboratório.
 
-Cada card mostra a entrada e a saída como um transcript de terminal: antes de
-cada etapa aparece o prompt da máquina executada, por exemplo
-`lab@cliente-lan:~$ ip route get 1.1.1.1`, seguido da evidência retornada. A
-tela colore comandos, marcadores de sucesso, falhas e dicas para facilitar a
-leitura durante a apresentação. O botão `terminal amplo` faz a saída ocupar a
-largura total do card quando for melhor mostrar apenas a evidência.
+Cada card traz comandos reais para a validação e um shell SSH interativo da VM
+do card. O botão `foco no terminal` oculta os detalhes do teste e dá ainda mais
+espaço à saída. Use `Ctrl+C` no botão do prompt para interromper um comando
+que permanece em primeiro plano. Os botões `-` e `+` ajustam o tamanho da fonte
+do terminal, e os comandos HTTP do roteiro usam limite de tempo para não prender
+a apresentação caso a porta esteja bloqueada.
 
 Ele valida:
 
-- status das três VMs;
 - endereço, gateway, DNS da LAN e rota/NAT de saída;
 - bloqueio de acesso direto da WAN para a LAN e da porta WAN `80`;
 - subida do servidor HTTP temporário no cliente LAN;

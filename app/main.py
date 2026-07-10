@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import os
 import shlex
 import socket
@@ -9,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -146,43 +147,21 @@ def overview_command(s: Settings) -> list[str]:
         ("cliente-lan", s.lan_client, "22"),
         ("cliente-wan", s.wan_client, "22"),
     ]
-    lista = " ".join(f'"{name} {ip} {port}"' for name, ip, port in targets)
-    script = (
-        f"for e in {lista}; do set -- $e; "
-        'printf "\\n@@CMD dashboard@host-kvm:~$ testa %s %s:%s\\n" "$1" "$2" "$3"; '
-        'if timeout 3 bash -c "echo > /dev/tcp/$2/$3" 2>/dev/null; '
-        'then echo "$1 ($2): UP"; else echo "$1 ($2): DOWN"; fi; done'
-    )
+    parts: list[str] = []
+    for name, ip, port in targets:
+        probe = f"timeout 3 bash -c 'echo > /dev/tcp/{ip}/{port}'"
+        parts.extend(
+            (
+                "printf '\\n@@CMD dashboard@host-kvm:~$ %s\\n' " + shlex.quote(probe),
+                f"if {probe} 2>/dev/null; then echo '{name} ({ip}): reachable'; "
+                f"else echo '{name} ({ip}): unavailable'; fi",
+            )
+        )
+    script = "; ".join(parts)
     return ["bash", "-c", script]
 
 
 CHECKS: tuple[Check, ...] = (
-    Check(
-        id="overview",
-        section="Visão geral",
-        title="Status do laboratório",
-        summary="Confirma se as três VMs do laboratório estão no ar.",
-        explanation="Testa conexão com as três VMs a partir do host KVM: opnsense-fw (firewall), cliente-lan (rede interna) e cliente-wan (externo/VPN). Verde só se as três responderem.",
-        success_label="As três VMs responderam",
-        host="host local",
-        build=overview_command,
-        expected=(
-            "opnsense-fw (192.168.10.1): UP",
-            "cliente-lan (192.168.10.100): UP",
-            "cliente-wan (10.10.10.171): UP",
-        ),
-        accent="navy",
-        steps=(
-            ("192.168.10.1:443", "opnsense-fw — a interface web do firewall responde."),
-            ("192.168.10.100:22", "cliente-lan — o SSH do cliente interno responde."),
-            ("10.10.10.171:22", "cliente-wan — o SSH do cliente externo (VPN) responde."),
-        ),
-        reads=(
-            ("opnsense-fw (192.168.10.1): UP", "O firewall respondeu."),
-            ("cliente-lan (192.168.10.100): UP", "O cliente interno respondeu."),
-            ("cliente-wan (10.10.10.171): UP", "O cliente externo respondeu."),
-        ),
-    ),
     Check(
         id="lan-address",
         section="LAN",
@@ -197,26 +176,24 @@ CHECKS: tuple[Check, ...] = (
                 (
                     (
                         "ip -4 -br addr show enp1s0",
-                        "ip4=$(ip -4 -br addr show enp1s0 | awk '{print $3}'); "
-                        "echo LAN_IP=$ip4; [ \"$ip4\" = '192.168.10.100/24' ]",
+                        "ip -4 -br addr show enp1s0",
                     ),
                     (
                         "ip route show default",
-                        "gw=$(ip route show default | awk '{print $3; exit}'); "
-                        "echo DEFAULT_VIA=$gw; [ \"$gw\" = '192.168.10.1' ]",
+                        "ip route show default",
                     ),
                 )
             ),
         ),
-        expected=("LAN_IP=192.168.10.100/24", "DEFAULT_VIA=192.168.10.1"),
+        expected=("192.168.10.100/24", "default via 192.168.10.1"),
         accent="blue",
         steps=(
             ("ip -4 -br addr show enp1s0", "Confirma o IP do cliente na LAN."),
             ("ip route show default", "Confirma a rota padrão para o OPNsense."),
         ),
         reads=(
-            ("LAN_IP=192.168.10.100/24", "Cliente interno está no endereço esperado."),
-            ("DEFAULT_VIA=192.168.10.1", "Gateway padrão é o OPNsense."),
+            ("192.168.10.100/24", "Cliente interno está no endereço esperado."),
+            ("default via 192.168.10.1", "Gateway padrão é o OPNsense."),
         ),
     ),
     Check(
@@ -232,34 +209,32 @@ CHECKS: tuple[Check, ...] = (
             terminal_script(
                 (
                     (
-                        "grep dhcp4 /etc/netplan",
-                        "mode=static-for-dnat; "
-                        "grep -qrh 'dhcp4:[[:space:]]*true' /etc/netplan 2>/dev/null && mode=dhcp || true; "
-                        "echo CLIENT_ADDRESS_MODE=$mode",
+                        "networkctl status enp1s0 --no-pager",
+                        "networkctl status enp1s0 --no-pager",
                     ),
                     (
                         "resolvectl dns enp1s0",
-                        "dns=$(resolvectl dns enp1s0 | awk -F': ' '{print $2}'); "
-                        "echo DNS_SERVER=$dns; [ \"$dns\" = '192.168.10.1' ]",
+                        "resolvectl dns enp1s0",
                     ),
                     (
                         "resolvectl query one.one.one.one",
-                        "resolvectl query one.one.one.one >/dev/null; echo DNS_RESOLVE_OK",
+                        "resolvectl query one.one.one.one",
                     ),
                 )
             ),
         ),
-        expected=("DNS_SERVER=192.168.10.1", "DNS_RESOLVE_OK"),
+        expected=("Address: 192.168.10.100", "Gateway: 192.168.10.1", "DNS: 192.168.10.1", "one.one.one.one:", "1.1.1.1"),
         accent="cyan",
         steps=(
-            ("grep dhcp4 /etc/netplan", "Mostra se o cliente está em DHCP ou fixo para a demo."),
+            ("networkctl status enp1s0 --no-pager", "Mostra a configuração real da interface LAN."),
             ("resolvectl dns enp1s0", "Confirma que o DNS da LAN aponta para o OPNsense."),
             ("resolvectl query one.one.one.one", "Valida resolução DNS externa sem depender de página web."),
         ),
         reads=(
-            ("CLIENT_ADDRESS_MODE=static-for-dnat", "O cliente demo usa IP fixo para manter o DNAT em 192.168.10.100."),
-            ("DNS_SERVER=192.168.10.1", "O OPNsense é o DNS da LAN."),
-            ("DNS_RESOLVE_OK", "A resolução de nomes funcionou."),
+            ("Address: 192.168.10.100", "Cliente demo está no endereço usado pelo DNAT."),
+            ("Gateway: 192.168.10.1", "O OPNsense é o gateway da LAN."),
+            ("DNS: 192.168.10.1", "O OPNsense é o DNS da LAN."),
+            ("one.one.one.one: ... 1.1.1.1", "A resolução de nomes funcionou."),
         ),
     ),
     Check(
@@ -276,17 +251,16 @@ CHECKS: tuple[Check, ...] = (
                 (
                     (
                         "ip route get 1.1.1.1",
-                        "ip route get 1.1.1.1 | head -1 | sed 's/^/ROUTE_TO_1_1_1_1=/'",
+                        "ip route get 1.1.1.1",
                     ),
                     (
                         "ping -c 2 1.1.1.1",
-                        "ping -c 2 -W 2 1.1.1.1 >/tmp/nat-ping.out; "
-                        "grep -q '0% packet loss' /tmp/nat-ping.out; echo NAT_ROUTE_OK",
+                        "ping -c 2 -W 2 1.1.1.1",
                     ),
                 )
             ),
         ),
-        expected=("via 192.168.10.1", "NAT_ROUTE_OK"),
+        expected=("via 192.168.10.1", "0% packet loss"),
         timeout=20,
         accent="green",
         steps=(
@@ -295,7 +269,7 @@ CHECKS: tuple[Check, ...] = (
         ),
         reads=(
             ("via 192.168.10.1", "Tráfego externo sai pelo OPNsense."),
-            ("NAT_ROUTE_OK", "Ping externo funcionou sem depender de site."),
+            ("0% packet loss", "Ping externo funcionou sem depender de site."),
         ),
     ),
     Check(
@@ -314,11 +288,11 @@ CHECKS: tuple[Check, ...] = (
             "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'sudo ip route replace 192.168.10.0/24 via 10.10.10.146'; "
             "sudo ip route replace 192.168.10.0/24 via 10.10.10.146; "
             "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'ping -c 2 192.168.10.100'; "
-            "ping -c 2 -W 2 192.168.10.100 >/tmp/wan-lan-ping.out 2>&1 || true; "
+            "ping -c 2 -W 2 192.168.10.100 2>&1 | tee /tmp/wan-lan-ping.out || true; "
             "grep -q '100% packet loss' /tmp/wan-lan-ping.out && echo WAN_LAN_PING_BLOCKED; "
-            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl http://192.168.10.100:8080/'; "
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl --connect-timeout 3 --max-time 5 http://192.168.10.100:8080/'; "
             "curl -sS --max-time 5 -o /dev/null -w 'DIRECT_HTTP=%{http_code} EXIT=%{exitcode}\\n' http://192.168.10.100:8080/ 2>/dev/null || true; "
-            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl http://10.10.10.146:80/'; "
+            "printf '\\n@@CMD %s@%s:~$ %s\\n' \"$USER\" \"$(hostname)\" 'curl --connect-timeout 3 --max-time 5 http://10.10.10.146:80/'; "
             f"curl -sS --max-time 5 -o /dev/null -w 'WAN_80=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:80/ 2>/dev/null || true",
         ),
         expected=("WAN_LAN_PING_BLOCKED", "DIRECT_HTTP=000 EXIT=28", "WAN_80=000 EXIT=28"),
@@ -327,14 +301,14 @@ CHECKS: tuple[Check, ...] = (
         steps=(
             ("sudo ip route replace 192.168.10.0/24 via 10.10.10.146", "Força a rota WAN→LAN passar pelo OPNsense (pior caso)."),
             ("ping -c 2 192.168.10.100", "Tenta pingar a LAN direto — deve dar 100% de perda."),
-            ("curl http://192.168.10.100:8080/", "Tenta HTTP direto na LAN — deve dar timeout (bloqueado)."),
-            ("curl http://10.10.10.146:80/", "Bate na porta 80 da WAN do OPNsense — deve ficar fechada."),
+            ("curl --connect-timeout 3 --max-time 5 http://192.168.10.100:8080/", "Tenta HTTP direto na LAN com limite de tempo — deve travar e parar sozinho."),
+            ("curl --connect-timeout 3 --max-time 5 http://10.10.10.146:80/", "Bate na porta 80 da WAN com limite de tempo — deve ficar fechada."),
             ("sudo ip route replace 192.168.10.0/24 dev wg0", "Restaura a rota original via túnel WireGuard."),
         ),
         reads=(
-            ("WAN_LAN_PING_BLOCKED", "O ping direto à LAN foi bloqueado pelo firewall."),
-            ("DIRECT_HTTP=000 EXIT=28", "O HTTP direto deu timeout (bloqueado)."),
-            ("WAN_80=000 EXIT=28", "Porta 80 sem resposta na WAN — publicação livre não existe."),
+            ("100% packet loss", "O ping direto à LAN foi bloqueado pelo firewall."),
+            ("curl: (28)", "O HTTP direto deu timeout (bloqueado)."),
+            ("curl: (28)", "Porta 80 sem resposta na WAN — publicação livre não existe."),
         ),
     ),
     Check(
@@ -350,27 +324,24 @@ CHECKS: tuple[Check, ...] = (
             terminal_script(
                 (
                     (
-                        "python3 -m http.server 8080",
-                        "if [ -f /tmp/opnsense-demo-http.pid ] && kill -0 $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null; "
-                        "then echo 'HTTP 8080 ja estava rodando'; "
-                        "else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & "
-                        "echo $! > /tmp/opnsense-demo-http.pid; fi; echo \"PID=$(cat /tmp/opnsense-demo-http.pid)\"",
+                        "if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'HTTP 8080 ja estava rodando'; else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & fi",
+                        "if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'HTTP 8080 ja estava rodando'; else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & fi",
                     ),
                     (
-                        "ss -ltn | grep :8080",
-                        "sleep 1; ss -ltn | grep -q ':8080' && echo 'LISTEN 8080 OK' || echo 'porta 8080 nao apareceu'",
+                        "for i in 1 2 3 4 5; do ss -ltn 'sport = :8080' | grep -q LISTEN && break; sleep 1; done; ss -ltn 'sport = :8080'",
+                        "for i in 1 2 3 4 5; do ss -ltn 'sport = :8080' | grep -q LISTEN && break; sleep 1; done; ss -ltn 'sport = :8080'",
                     ),
                 )
             ),
         ),
-        expected=("LISTEN 8080 OK",),
+        expected=("LISTEN", "0.0.0.0:8080"),
         accent="orange",
         steps=(
-            ("python3 -m http.server 8080", "Sobe um servidor web simples no cliente-lan (porta 8080)."),
-            ("ss -ltn | grep :8080", "Confirma que a porta 8080 está escutando."),
+            ("if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'HTTP 8080 ja estava rodando'; else nohup python3 -m http.server 8080 --bind 0.0.0.0 --directory /tmp >/tmp/opnsense-demo-http.log 2>&1 & fi", "Mantém o HTTP existente ou sobe o servidor web temporário sem prender o terminal."),
+            ("for i in 1 2 3 4 5; do ss -ltn 'sport = :8080' | grep -q LISTEN && break; sleep 1; done; ss -ltn 'sport = :8080'", "Espera até cinco segundos e confirma que a porta 8080 está escutando."),
         ),
         reads=(
-            ("LISTEN 8080 OK", "O servidor web interno subiu e está escutando na 8080."),
+            ("LISTEN", "O servidor web interno subiu e está escutando na 8080."),
             ("0.0.0.0:8080", "Socket aberto em todas as interfaces do cliente-lan."),
         ),
     ),
@@ -387,7 +358,7 @@ CHECKS: tuple[Check, ...] = (
             terminal_script(
                 (
                     (
-                        "curl http://10.10.10.146:8080/",
+                        "curl -I --connect-timeout 3 --max-time 8 http://10.10.10.146:8080/",
                         f"curl -sS --max-time 7 -o /dev/null "
                         f"-w 'DNAT_8080=%{{http_code}} EXIT=%{{exitcode}}\\n' http://{s.opnsense_wan}:8080/",
                     ),
@@ -398,10 +369,10 @@ CHECKS: tuple[Check, ...] = (
         timeout=20,
         accent="orange",
         steps=(
-            ("curl http://10.10.10.146:8080/", "Acessa a porta 8080 da WAN; o OPNsense redireciona (DNAT)."),
+            ("curl -I --connect-timeout 3 --max-time 8 http://10.10.10.146:8080/", "Acessa a porta 8080 da WAN com limite de tempo; o OPNsense redireciona (DNAT)."),
         ),
         reads=(
-            ("DNAT_8080=200 EXIT=0", "A publicação WAN chegou ao serviço interno."),
+            ("HTTP/1.0 200 OK", "A publicação WAN chegou ao serviço interno."),
         ),
     ),
     Check(
@@ -417,22 +388,24 @@ CHECKS: tuple[Check, ...] = (
             terminal_script(
                 (
                     (
-                        "kill $(cat /tmp/opnsense-demo-http.pid)",
-                        "if [ -f /tmp/opnsense-demo-http.pid ]; "
-                        "then kill $(cat /tmp/opnsense-demo-http.pid) 2>/dev/null || true; "
-                        "rm -f /tmp/opnsense-demo-http.pid; echo 'HTTP 8080 parado'; "
-                        "else echo 'sem pidfile'; fi",
+                        "pgrep -f 'python3 -m http[.]server 8080' | xargs -r kill || true",
+                        "pgrep -f 'python3 -m http[.]server 8080' | xargs -r kill || true",
+                    ),
+                    (
+                        "sleep 1; if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'porta 8080 ainda escutando'; else echo 'porta 8080 liberada'; fi",
+                        "sleep 1; if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'porta 8080 ainda escutando'; else echo 'porta 8080 liberada'; fi",
                     ),
                 )
             ),
         ),
-        expected=("HTTP 8080 parado", "sem pidfile"),
+        expected=("porta 8080 liberada",),
         accent="orange",
         steps=(
-            ("kill $(cat /tmp/opnsense-demo-http.pid)", "Encerra o servidor web temporário da demonstração."),
+            ("pgrep -f 'python3 -m http[.]server 8080' | xargs -r kill", "Encerra o servidor web temporário mesmo se o pidfile tiver sumido."),
+            ("sleep 1; if ss -ltn 'sport = :8080' | grep -q LISTEN; then echo 'porta 8080 ainda escutando'; else echo 'porta 8080 liberada'; fi", "Confirma que a porta 8080 não ficou escutando."),
         ),
         reads=(
-            ("HTTP 8080 parado", "O processo temporário foi encerrado."),
+            ("porta 8080 liberada", "O processo temporário foi encerrado e a porta 8080 ficou livre."),
         ),
     ),
     Check(
@@ -455,15 +428,15 @@ CHECKS: tuple[Check, ...] = (
                     ),
                     (
                         "ping -c 2 10.99.0.1",
-                        f"ping -c 2 -W 2 {s.wg_opnsense} >/tmp/wg-opnsense.out; echo WG_TUNNEL_OK",
+                        f"ping -c 2 -W 2 {s.wg_opnsense} | tee /tmp/wg-opnsense.out; grep -q '0% packet loss' /tmp/wg-opnsense.out; echo WG_TUNNEL_OK",
                     ),
                     (
                         "ping -c 2 192.168.10.1",
-                        "ping -c 2 -W 2 192.168.10.1 >/tmp/wg-gateway.out; echo WG_LAN_GATEWAY_OK",
+                        "ping -c 2 -W 2 192.168.10.1 | tee /tmp/wg-gateway.out; grep -q '0% packet loss' /tmp/wg-gateway.out; echo WG_LAN_GATEWAY_OK",
                     ),
                     (
                         "ping -c 2 192.168.10.100",
-                        f"ping -c 2 -W 2 {s.lan_client} >/tmp/wg-client.out; echo WG_CLIENT_LAN_OK",
+                        f"ping -c 2 -W 2 {s.lan_client} | tee /tmp/wg-client.out; grep -q '0% packet loss' /tmp/wg-client.out; echo WG_CLIENT_LAN_OK",
                     ),
                 )
             ),
@@ -478,13 +451,31 @@ CHECKS: tuple[Check, ...] = (
             ("ping -c 2 192.168.10.100", "Chega ao cliente-lan — a VPN dá acesso controlado à LAN."),
         ),
         reads=(
-            ("WG_HANDSHAKE_AGE=", "O túnel WireGuard tem handshake registrado."),
-            ("WG_TUNNEL_OK", "Alcançou a ponta WireGuard do OPNsense."),
-            ("WG_LAN_GATEWAY_OK", "Alcançou o gateway da LAN via VPN."),
-            ("WG_CLIENT_LAN_OK", "Alcançou o cliente LAN via VPN."),
+            ("sudo wg show wg0 latest-handshakes", "O túnel WireGuard tem handshake registrado."),
+            ("10.99.0.1", "Alcançou a ponta WireGuard do OPNsense."),
+            ("192.168.10.1", "Alcançou o gateway da LAN via VPN."),
+            ("192.168.10.100", "Alcançou o cliente LAN via VPN."),
         ),
     ),
 )
+
+# A sequência apresenta primeiro a dependência (HTTP interno), depois as duas
+# provas de segurança que dependem dela: bloqueio direto e DNAT publicado.
+CHECK_DISPLAY_ORDER = (
+    "lan-address",
+    "lan-dhcp-dns",
+    "nat-route",
+    "dnat-start",
+    "firewall-blocks",
+    "dnat-test",
+    "dnat-stop",
+    "wireguard",
+)
+
+
+def ordered_checks() -> tuple[Check, ...]:
+    by_id = {check.id: check for check in CHECKS}
+    return tuple(by_id[check_id] for check_id in CHECK_DISPLAY_ORDER)
 
 
 def target_ip_for(check: Check, s: Settings) -> str:
@@ -500,6 +491,20 @@ def ssh_connection(check: Check, s: Settings) -> str:
     if check.host == "host local":
         return "no host KVM (ping local)"
     return f"ssh {s.ssh_user}@{target_ip_for(check, s)}"
+
+
+def interactive_client_ssh(s: Settings, host: str) -> list[str]:
+    """Abre um shell remoto com TTY para o terminal web local."""
+    cmd = _ssh_base(s, use_lab_key=True)
+    # A largura fixa evita que comandos reais sejam quebrados pelo TTY de 80
+    # colunas antes de chegarem ao navegador.
+    cmd.extend(["-tt", _target(s, host), "stty cols 240 rows 48; exec bash -il"])
+    return cmd
+
+
+def interactive_steps_for(check: Check) -> tuple[str, ...]:
+    """Envia exatamente os comandos exibidos na coluna Entrada."""
+    return tuple(command for command, _ in check.steps)
 
 
 def check_to_dict(check: Check, s: Settings) -> dict[str, object]:
@@ -520,6 +525,7 @@ def check_to_dict(check: Check, s: Settings) -> dict[str, object]:
         "accent": check.accent,
         "connection": ssh_connection(check, s),
         "target_ip": target_ip_for(check, s),
+        "interactive_steps": list(interactive_steps_for(check)),
         "steps": [{"cmd": cmd, "does": does} for cmd, does in check.steps],
         "expected": list(check.expected),
         "reads": [{"sig": sig, "means": means} for sig, means in check.reads],
@@ -592,7 +598,53 @@ def start_tunnel(name: str, mode: str | None = Query(default=None)) -> dict[str,
 @app.get("/api/checks")
 def checks(mode: str | None = Query(default=None)) -> list[dict[str, object]]:
     s = settings_for(mode)
-    return [check_to_dict(check, s) for check in CHECKS]
+    return [check_to_dict(check, s) for check in ordered_checks()]
+
+
+@app.websocket("/api/terminals/{check_id}")
+async def interactive_terminal(websocket: WebSocket, check_id: str) -> None:
+    """Encaminha bytes entre o navegador local e um shell SSH real da VM."""
+    s = settings_for(websocket.query_params.get("mode"))
+    check = next((item for item in CHECKS if item.id == check_id), None)
+    if check is None or check.host == "host local":
+        await websocket.close(code=1008)
+        return
+
+    await websocket.accept()
+    process = await asyncio.create_subprocess_exec(
+        *interactive_client_ssh(s, target_ip_for(check, s)),
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.STDOUT,
+    )
+
+    async def relay_output() -> None:
+        assert process.stdout is not None
+        while chunk := await process.stdout.read(1024):
+            await websocket.send_text(chunk.decode("utf-8", errors="replace"))
+
+    output_task = asyncio.create_task(relay_output())
+    try:
+        while True:
+            message = await websocket.receive_text()
+            if process.stdin is None:
+                break
+            process.stdin.write(message.encode("utf-8"))
+            await process.stdin.drain()
+    except WebSocketDisconnect:
+        pass
+    finally:
+        if process.returncode is None:
+            process.terminate()
+            try:
+                await asyncio.wait_for(process.wait(), timeout=2)
+            except asyncio.TimeoutError:
+                process.kill()
+        output_task.cancel()
+        try:
+            await output_task
+        except asyncio.CancelledError:
+            pass
 
 
 @app.post("/api/checks/{check_id}/run")
