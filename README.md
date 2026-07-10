@@ -64,6 +64,7 @@ Endereços principais:
 | `docs/` | Topologia, roteiro, arquivos externos e solução de problemas |
 | `assets/` | Imagens e logos usados na documentação/apresentação |
 | `presentation/` | Apresentação final exportada em PDF |
+| `firewall-e-roteamento-avancado-com-opnsense.pdf` | Relatório acadêmico final do projeto |
 | `COMO_RODAR.md` | Guia curto para executar o laboratório |
 | `INSTALACAO.md` | Guia de instalação detalhado |
 
