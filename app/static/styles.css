@@ -113,14 +113,9 @@ body {
 .material-link { display: flex; align-items: center; min-height: 42px; gap: 9px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 8px; color: var(--ink); background: var(--panel); box-shadow: 0 5px 14px rgba(17,26,44,.025); font-size: 12px; font-weight: 750; text-decoration: none; transition: transform .15s, border-color .15s, background .15s, color .15s; }
 .material-link::before { display: grid; place-items: center; flex: 0 0 auto; width: 23px; height: 23px; border-radius: 6px; background: color-mix(in srgb, var(--ink) 7%, var(--panel)); color: var(--ink); font-family: var(--mono); font-size: 9px; font-weight: 900; }
 .material-github::before { content: "GH"; }
-.material-pdf::before { content: "PDF"; color: var(--red); background: color-mix(in srgb, var(--red) 9%, var(--panel)); }
-.material-pending::before { content: "DOC"; color: var(--muted); }
 .material-link:hover { transform: translateY(-1px); border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 3%, var(--panel)); }
 .material-link b { margin-left: auto; color: var(--faint); font: 900 21px/1 var(--mono); }
 .material-link:hover b { color: var(--accent); }
-.material-pending { color: var(--muted); border-style: dashed; box-shadow: none; }
-.material-pending:hover { transform: none; color: var(--muted); border-color: var(--line-2); background: var(--panel); }
-.material-pending em { margin-left: auto; color: var(--faint); font-size: 10px; font-style: normal; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
 
 .side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
 .theme-toggle { width: 100%; justify-content: center; }
